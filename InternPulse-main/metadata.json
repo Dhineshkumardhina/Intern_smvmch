@@ -1,0 +1,6 @@
+{
+  "name": "InternPulse",
+  "description": "Real-time internship monitoring system for Sri Manakula Vinayagar Engineering College with role-based dashboards for Students, Mentors, HOD, and Admin.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

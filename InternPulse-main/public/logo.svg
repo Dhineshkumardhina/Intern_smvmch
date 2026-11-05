@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="100%" height="100%" fill="none">
+  <defs>
+    <linearGradient id="internPulseGrad" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#0A2558" />
+      <stop offset="35%" stop-color="#0E4884" />
+      <stop offset="70%" stop-color="#009BA9" />
+      <stop offset="100%" stop-color="#00C4B8" />
+    </linearGradient>
+    <linearGradient id="pulseLineGrad" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#0A2558" />
+      <stop offset="40%" stop-color="#0E4884" />
+      <stop offset="75%" stop-color="#00A3B2" />
+      <stop offset="100%" stop-color="#00C4B8" />
+    </linearGradient>
+  </defs>
+
+  <!-- Rounded Box Frame with gap for line entry -->
+  <!-- Rounded rect: outer 320x320 at (40, 40), radius 70 -->
+  <!-- Top, Right, Bottom, Left paths with open left area for pulse trace -->
+  <path 
+    d="M 52 230 
+       A 64 64 0 0 0 116 348 
+       L 284 348 
+       A 64 64 0 0 0 348 284 
+       L 348 116 
+       A 64 64 0 0 0 284 52 
+       L 116 52 
+       A 64 64 0 0 0 52 116 
+       L 52 205" 
+    stroke="url(#internPulseGrad)" 
+    stroke-width="26" 
+    stroke-linecap="round" 
+    stroke-linejoin="round"
+  />
+
+  <!-- The Pulse Wave transitioning into Upward Arrow -->
+  <path 
+    d="M 52 228 
+       L 108 228 
+       L 152 165 
+       L 198 282 
+       L 282 134" 
+    stroke="url(#pulseLineGrad)" 
+    stroke-width="26" 
+    stroke-linecap="round" 
+    stroke-linejoin="round"
+  />
+
+  <!-- Arrow Head pointing North-East -->
+  <path 
+    d="M 230 134 
+       L 284 132 
+       L 286 186" 
+    stroke="url(#pulseLineGrad)" 
+    stroke-width="26" 
+    stroke-linecap="round" 
+    stroke-linejoin="round"
+  />
+</svg>
