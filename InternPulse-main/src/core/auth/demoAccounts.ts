@@ -1,6 +1,5 @@
 import { AuthUser, UserRole } from './authUser';
-import { getSupabaseClient } from '../../lib/supabase';
-import { DbMentor, DbHod, DbStudent } from '../../lib/supabase';
+import { getSupabaseClient, DbMentor, DbHod, DbStudent, DbProfile } from '../../lib/supabase';
 
 export const COLLEGE_NAME = 'Sri Manakula Vinayagar Engineering College';
 
@@ -15,8 +14,8 @@ export interface SampleLoginAccount {
 }
 
 /**
- * Fetches actual live Mentors, HODs, and Students directly from your Supabase database tables
- * so users can click or use them to log in immediately without hardcoded files.
+ * Fetches institutional sample accounts directly from your Supabase database (`profiles` table)
+ * for test and preview convenience. Credentials must be verified through Supabase Auth.
  */
 export async function fetchSupabaseLiveSampleLogins(): Promise<{
   hods: SampleLoginAccount[];
@@ -37,7 +36,38 @@ export async function fetchSupabaseLiveSampleLogins(): Promise<{
   if (!client) return result;
 
   try {
-    // 1. Fetch HODs from Supabase
+    // 1. Primary: query authoritative `profiles` table
+    const { data: profiles, error } = await client
+      .from('profiles')
+      .select('*')
+      .eq('is_active', true)
+      .limit(30);
+
+    if (!error && profiles && profiles.length > 0) {
+      profiles.forEach((p: DbProfile) => {
+        const item: SampleLoginAccount = {
+          id: p.student_id || p.mentor_id || p.id,
+          name: p.full_name,
+          email: p.email,
+          role: p.role,
+          departmentCode: (p.department_code || 'CSEBS').toUpperCase(),
+          designationOrYear: p.role === 'hod' ? `HOD, ${(p.department_code || 'CSEBS').toUpperCase()}`
+            : p.role === 'mentor' ? 'Faculty Mentor'
+            : 'Student Intern',
+          password: 'password123',
+        };
+
+        if (p.role === 'hod') result.hods.push(item);
+        else if (p.role === 'mentor') result.mentors.push(item);
+        else if (p.role === 'student') result.students.push(item);
+      });
+
+      if (result.hods.length > 0 || result.mentors.length > 0 || result.students.length > 0) {
+        return result;
+      }
+    }
+
+    // 2. Secondary fallback: check legacy tables
     const { data: hodData } = await client
       .from('hods')
       .select('*')
@@ -55,7 +85,6 @@ export async function fetchSupabaseLiveSampleLogins(): Promise<{
       }));
     }
 
-    // 2. Fetch Mentors from Supabase
     const { data: mentorData } = await client
       .from('mentors')
       .select('*')
@@ -73,7 +102,6 @@ export async function fetchSupabaseLiveSampleLogins(): Promise<{
       }));
     }
 
-    // 3. Fetch Students from Supabase
     const { data: studentData } = await client
       .from('students')
       .select('*')
@@ -91,11 +119,10 @@ export async function fetchSupabaseLiveSampleLogins(): Promise<{
       }));
     }
   } catch (err) {
-    console.warn('Error fetching sample logins from Supabase tables:', err);
+    console.warn('Error fetching sample logins from Supabase:', err);
   }
 
   return result;
 }
 
 export const DEMO_ACCOUNTS: { email: string; password?: string; user: AuthUser }[] = [];
-

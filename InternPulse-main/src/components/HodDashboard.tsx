@@ -12,10 +12,13 @@ import {
   ChevronRight,
   ShieldCheck,
   Award,
-  GraduationCap
+  GraduationCap,
+  MapPin
 } from 'lucide-react';
 import { StudentRecord, MentorRecord } from '../data/initialData';
 import { AuthUser } from '../core/auth/authUser';
+import { HodLocationManagementView } from './locations/HodLocationManagementView';
+import { locationRepository } from '../core/repository/locationRepository';
 
 interface HodDashboardProps {
   currentUser: AuthUser;
@@ -44,6 +47,7 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
   const [selectedMentorFilter, setSelectedMentorFilter] = useState<string>('All Mentors');
   const [drillDownMentor, setDrillDownMentor] = useState<MentorRecord | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [hodActiveTab, setHodActiveTab] = useState<'directory' | 'locations'>('directory');
 
   const departmentCode = currentUser.departmentCode || currentUser.dept?.split(' ')[0] || 'IT';
 
@@ -123,50 +127,103 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
         </div>
       </div>
 
-      {/* 5 High-Level Department Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-        <div 
-          onClick={() => { setDrillDownMentor(null); setSelectedMentorFilter('All Mentors'); setFilterYear('All Years'); setFilterStatus('All Status'); }}
-          className="bg-white p-4 rounded-xl border border-[#E3E1EA] shadow-sm cursor-pointer hover:border-[#24389C] transition-all"
+      {/* HOD Workspace Tabs (Preserving Directory & Providing Location Governance) */}
+      <div className="flex flex-wrap items-center gap-2 border-b border-[#E3E1EA] pb-2">
+        <button
+          onClick={() => setHodActiveTab('directory')}
+          className={`px-4 py-2.5 text-xs font-bold rounded-xl transition-all flex items-center space-x-2 ${
+            hodActiveTab === 'directory'
+              ? 'bg-[#24389C] text-white shadow-xs'
+              : 'bg-white text-[#57657A] hover:bg-[#EFEDF6] border border-[#E3E1EA]'
+          }`}
         >
-          <div className="text-[11px] font-semibold text-[#57657A]">Total Students</div>
-          <div className="text-2xl font-bold text-[#1A1B22] mt-1">{stats.totalStudents}</div>
-          <div className="text-[10px] text-[#57657A] mt-1">{departmentCode} Department</div>
-        </div>
+          <Users className="w-4 h-4" />
+          <span>Department Student & Mentor Directory</span>
+        </button>
 
-        <div className="bg-white p-4 rounded-xl border border-[#E3E1EA] shadow-sm">
-          <div className="text-[11px] font-semibold text-[#57657A]">Department Mentors</div>
-          <div className="text-2xl font-bold text-[#1A1B22] mt-1">{stats.totalMentors}</div>
-          <div className="text-[10px] text-indigo-600 mt-1">Active Faculty Guides</div>
-        </div>
-
-        <div 
-          onClick={() => setFilterStatus('On Track')}
-          className="bg-white p-4 rounded-xl border border-[#E3E1EA] shadow-sm cursor-pointer hover:border-emerald-500 transition-all"
+        <button
+          onClick={() => setHodActiveTab('locations')}
+          className={`px-4 py-2.5 text-xs font-bold rounded-xl transition-all flex items-center space-x-2 ${
+            hodActiveTab === 'locations'
+              ? 'bg-[#24389C] text-white shadow-xs'
+              : 'bg-white text-[#57657A] hover:bg-[#EFEDF6] border border-[#E3E1EA]'
+          }`}
         >
-          <div className="text-[11px] font-semibold text-emerald-700">Active Internships</div>
-          <div className="text-2xl font-bold text-emerald-800 mt-1">{stats.active}</div>
-          <div className="text-[10px] text-emerald-600 mt-1">Streaming Updates</div>
-        </div>
-
-        <div 
-          onClick={() => setFilterStatus('Completed')}
-          className="bg-teal-50 p-4 rounded-xl border border-teal-200 shadow-sm cursor-pointer hover:border-teal-500 transition-all"
-        >
-          <div className="text-[11px] font-semibold text-teal-800">Completed</div>
-          <div className="text-2xl font-bold text-teal-900 mt-1">{stats.completed}</div>
-          <div className="text-[10px] text-teal-700 mt-1">Graduated Interns</div>
-        </div>
-
-        <div 
-          onClick={() => setFilterStatus('Blocked')}
-          className="bg-rose-50 p-4 rounded-xl border border-rose-200 shadow-sm cursor-pointer hover:border-rose-500 transition-all"
-        >
-          <div className="text-[11px] font-semibold text-rose-800">At Risk / Blocked</div>
-          <div className="text-2xl font-bold text-rose-900 mt-1">{stats.atRisk}</div>
-          <div className="text-[10px] text-rose-700 font-bold mt-1">Requires Attention</div>
-        </div>
+          <MapPin className="w-4 h-4" />
+          <span>Internship Locations & Geofence Governance</span>
+          <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-900 ml-1 font-bold">
+            {locationRepository.getLocations().length} Sites
+          </span>
+        </button>
       </div>
+
+      {/* RENDER LOCATION MANAGEMENT VIEW WHEN ACTIVE */}
+      {hodActiveTab === 'locations' && (
+        <HodLocationManagementView
+          currentUser={currentUser}
+          departmentStudents={departmentStudents}
+        />
+      )}
+
+      {/* RENDER EXISTING DIRECTORY VIEW WHEN ACTIVE */}
+      {hodActiveTab === 'directory' && (
+        <>
+          {/* 5 High-Level Department Stats */}
+          <div className="grid grid-cols-2 sm:grid-cols-6 gap-3">
+            <div 
+              onClick={() => { setDrillDownMentor(null); setSelectedMentorFilter('All Mentors'); setFilterYear('All Years'); setFilterStatus('All Status'); }}
+              className="bg-white p-4 rounded-xl border border-[#E3E1EA] shadow-sm cursor-pointer hover:border-[#24389C] transition-all"
+            >
+              <div className="text-[11px] font-semibold text-[#57657A]">Total Students</div>
+              <div className="text-2xl font-bold text-[#1A1B22] mt-1">{stats.totalStudents}</div>
+              <div className="text-[10px] text-[#57657A] mt-1">{departmentCode} Department</div>
+            </div>
+
+            <div className="bg-white p-4 rounded-xl border border-[#E3E1EA] shadow-sm">
+              <div className="text-[11px] font-semibold text-[#57657A]">Department Mentors</div>
+              <div className="text-2xl font-bold text-[#1A1B22] mt-1">{stats.totalMentors}</div>
+              <div className="text-[10px] text-indigo-600 mt-1">Active Faculty Guides</div>
+            </div>
+
+            <div 
+              onClick={() => setFilterStatus('On Track')}
+              className="bg-white p-4 rounded-xl border border-[#E3E1EA] shadow-sm cursor-pointer hover:border-emerald-500 transition-all"
+            >
+              <div className="text-[11px] font-semibold text-emerald-700">Active Internships</div>
+              <div className="text-2xl font-bold text-emerald-800 mt-1">{stats.active}</div>
+              <div className="text-[10px] text-emerald-600 mt-1">Streaming Updates</div>
+            </div>
+
+            <div 
+              onClick={() => setFilterStatus('Completed')}
+              className="bg-teal-50 p-4 rounded-xl border border-teal-200 shadow-sm cursor-pointer hover:border-teal-500 transition-all"
+            >
+              <div className="text-[11px] font-semibold text-teal-800">Completed</div>
+              <div className="text-2xl font-bold text-teal-900 mt-1">{stats.completed}</div>
+              <div className="text-[10px] text-teal-700 mt-1">Graduated Interns</div>
+            </div>
+
+            <div 
+              onClick={() => setFilterStatus('Blocked')}
+              className="bg-rose-50 p-4 rounded-xl border border-rose-200 shadow-sm cursor-pointer hover:border-rose-500 transition-all"
+            >
+              <div className="text-[11px] font-semibold text-rose-800">At Risk / Blocked</div>
+              <div className="text-2xl font-bold text-rose-900 mt-1">{stats.atRisk}</div>
+              <div className="text-[10px] text-rose-700 font-bold mt-1">Requires Attention</div>
+            </div>
+
+            <div 
+              onClick={() => setHodActiveTab('locations')}
+              className="bg-indigo-50 p-4 rounded-xl border border-indigo-200 shadow-sm cursor-pointer hover:border-[#24389C] transition-all"
+            >
+              <div className="text-[11px] font-semibold text-indigo-900 flex items-center space-x-1">
+                <MapPin className="w-3.5 h-3.5 text-[#24389C]" />
+                <span>Host Geofences</span>
+              </div>
+              <div className="text-2xl font-bold text-[#24389C] mt-1">{locationRepository.getLocations().length}</div>
+              <div className="text-[10px] text-indigo-700 font-bold mt-1">Manage Sites →</div>
+            </div>
+          </div>
 
       {/* DEPARTMENT MENTORS SECTION (Strictly mentors belonging to this department) */}
       <div className="bg-white p-6 rounded-2xl border border-[#E3E1EA] shadow-sm">
@@ -436,7 +493,9 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
             )}
           </tbody>
         </table>
-      </div>
+          </div>
+        </>
+      )}
     </div>
   );
 };

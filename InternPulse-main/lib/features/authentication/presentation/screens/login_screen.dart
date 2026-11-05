@@ -1,23 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../app/router.dart';
+import '../../../../core/auth/auth_provider.dart';
+import '../../../../core/auth/auth_state.dart';
 import '../../../../core/theme/color_schemes.dart';
 import '../../../../models/user_role.dart';
 
-class LoginScreen extends StatefulWidget {
+class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _identifierController = TextEditingController();
   final _passwordController = TextEditingController();
   
   bool _obscurePassword = true;
-  bool _isLoading = false;
   String? _errorMessage;
 
   @override
@@ -36,54 +38,34 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-    });
+    final input = _identifierController.text.trim();
+    final password = _passwordController.text;
 
-    // Simulate authentication & role lookup from database record
-    await Future.delayed(const Duration(milliseconds: 700));
+    final success = await ref.read(authProvider.notifier).login(input, password);
 
     if (!mounted) return;
 
-    final input = _identifierController.text.trim().toLowerCase();
-    final password = _passwordController.text;
-
-    if (password.length < 6) {
-      setState(() {
-        _isLoading = false;
-        _errorMessage = 'Invalid credentials. Please check your email/ID and password.';
-      });
-      return;
-    }
-
-    // Role determined automatically from authenticated user's record
-    UserRole determinedRole;
-    if (input.contains('hod') || input.contains('head') || input.startsWith('hod')) {
-      determinedRole = UserRole.hod;
-    } else if (input.contains('mentor') || input.contains('faculty') || input.startsWith('fac')) {
-      determinedRole = UserRole.mentor;
+    if (success) {
+      final user = ref.read(authProvider.notifier).currentUser;
+      if (user != null) {
+        final targetRoute = AppRoutes.getInitialRouteForRole(user.role);
+        context.go(targetRoute);
+      }
     } else {
-      determinedRole = UserRole.student;
+      final authState = ref.read(authProvider);
+      if (authState is AuthError) {
+        setState(() {
+          _errorMessage = authState.message;
+        });
+      }
     }
-
-    setState(() {
-      _isLoading = false;
-    });
-
-    final targetRoute = AppRoutes.getInitialRouteForRole(determinedRole);
-    context.go(targetRoute);
-  }
-
-  void _fillPreset(String email, String password) {
-    _identifierController.text = email;
-    _passwordController.text = password;
-    setState(() {
-      _errorMessage = null;
-    });
   }
 
   @override
   Widget build(BuildContext context) {
+    final authState = ref.watch(authProvider);
+    final isLoading = authState is AuthLoading;
+
     return Scaffold(
       backgroundColor: PulseColors.background,
       body: SafeArea(
@@ -106,7 +88,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         borderRadius: BorderRadius.circular(16),
                         boxShadow: [
                           BoxShadow(
-                            color: PulseColors.primary.withOpacity(0.2),
+                            color: PulseColors.primary.withValues(alpha: 0.2),
                             blurRadius: 12,
                             offset: const Offset(0, 4),
                           ),
@@ -151,7 +133,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       border: Border.all(color: PulseColors.outlineVariant),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.04),
+                          color: Colors.black.withValues(alpha: 0.04),
                           blurRadius: 16,
                           offset: const Offset(0, 4),
                         ),
@@ -163,7 +145,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           const Text(
-                            'Welcome back',
+                            'Institutional Sign In',
                             style: TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.w700,
@@ -172,7 +154,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           const SizedBox(height: 4),
                           const Text(
-                            'Sign in with your institutional credentials',
+                            'Sign in with your verified institutional credentials',
                             style: TextStyle(
                               fontSize: 13,
                               color: PulseColors.onSurfaceVariant,
@@ -188,7 +170,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               decoration: BoxDecoration(
                                 color: PulseColors.errorContainer,
                                 borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: PulseColors.error.withOpacity(0.3)),
+                                border: Border.all(color: PulseColors.error.withValues(alpha: 0.3)),
                               ),
                               child: Row(
                                 children: [
@@ -214,13 +196,13 @@ class _LoginScreenState extends State<LoginScreen> {
                             controller: _identifierController,
                             keyboardType: TextInputType.emailAddress,
                             decoration: const InputDecoration(
-                              labelText: 'Email / Student ID',
-                              hintText: 'e.g. 23IT001 or name@smvec.ac.in',
+                              labelText: 'Email / Student Register Number',
+                              hintText: 'e.g. 23CSEBS001 or name@smvec.ac.in',
                               prefixIcon: Icon(Icons.person_outline_rounded),
                             ),
                             validator: (value) {
                               if (value == null || value.trim().isEmpty) {
-                                return 'Please enter your Email or Student ID';
+                                return 'Please enter your institutional Email or Register Number';
                               }
                               return null;
                             },
@@ -266,11 +248,11 @@ class _LoginScreenState extends State<LoginScreen> {
 
                           // Login Action Button with Loading State
                           ElevatedButton(
-                            onPressed: _isLoading ? null : _handleLogin,
+                            onPressed: isLoading ? null : _handleLogin,
                             style: ElevatedButton.styleFrom(
                               padding: const EdgeInsets.symmetric(vertical: 14),
                             ),
-                            child: _isLoading
+                            child: isLoading
                                 ? const SizedBox(
                                     height: 20,
                                     width: 20,
@@ -279,7 +261,30 @@ class _LoginScreenState extends State<LoginScreen> {
                                       valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                                     ),
                                   )
-                                : const Text('Login'),
+                                : const Text('Sign In to InternPulse'),
+                          ),
+                          const SizedBox(height: 16),
+
+                          // Student Onboarding link
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Text(
+                                "New student intern? ",
+                                style: TextStyle(fontSize: 12, color: PulseColors.onSurfaceVariant),
+                              ),
+                              GestureDetector(
+                                onTap: () => context.push(AppRoutes.register),
+                                child: const Text(
+                                  "Register here",
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: PulseColors.primary,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
@@ -288,61 +293,27 @@ class _LoginScreenState extends State<LoginScreen> {
 
                   const SizedBox(height: 24),
 
-                  // Demo Credentials Quick Access
+                  // Institutional Notice
                   Container(
-                    padding: const EdgeInsets.all(14),
+                    padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       color: PulseColors.surfaceContainerLow,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: PulseColors.outlineVariant),
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    child: Row(
                       children: [
-                        const Text(
-                          'Demo Quick Sign-In Accounts:',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            color: PulseColors.onSurfaceVariant,
+                        const Icon(Icons.shield_outlined, size: 18, color: PulseColors.primary),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            'Authenticated via SMVEC Centralized Supabase PostgreSQL. Role & permissions are authoritatively derived.',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: PulseColors.onSurfaceVariant,
+                              height: 1.3,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: OutlinedButton(
-                                onPressed: () => _fillPreset('student@smvec.ac.in', 'password123'),
-                                style: OutlinedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(vertical: 8),
-                                  visualDensity: VisualDensity.compact,
-                                ),
-                                child: const Text('Student', style: TextStyle(fontSize: 11)),
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            Expanded(
-                              child: OutlinedButton(
-                                onPressed: () => _fillPreset('mentor@smvec.ac.in', 'password123'),
-                                style: OutlinedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(vertical: 8),
-                                  visualDensity: VisualDensity.compact,
-                                ),
-                                child: const Text('Mentor', style: TextStyle(fontSize: 11)),
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            Expanded(
-                              child: OutlinedButton(
-                                onPressed: () => _fillPreset('hod@smvec.ac.in', 'password123'),
-                                style: OutlinedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(vertical: 8),
-                                  visualDensity: VisualDensity.compact,
-                                ),
-                                child: const Text('HOD', style: TextStyle(fontSize: 11)),
-                              ),
-                            ),
-                          ],
                         ),
                       ],
                     ),

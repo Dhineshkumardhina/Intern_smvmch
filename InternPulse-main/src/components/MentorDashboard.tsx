@@ -11,15 +11,21 @@ import {
   Building2,
   ExternalLink,
   MessageSquare,
-  ShieldCheck
+  ShieldCheck,
+  FileSpreadsheet
 } from 'lucide-react';
 import { StudentRecord } from '../data/initialData';
 import { AuthUser } from '../core/auth/authUser';
+import { MentorStudentManagementView } from './mentor/MentorStudentManagementView';
+import { MentorAttendanceOverview } from './mentor/MentorAttendanceOverview';
+import { internshipRepository } from '../core/repository/internshipRepository';
 
 interface MentorDashboardProps {
   currentUser: AuthUser;
   assignedStudents: StudentRecord[];
+  scopedStudents?: StudentRecord[];
   onReviewStudent?: (studentId: string, remarks: string) => void;
+  onRefreshData?: () => void;
 }
 
 const STATUS_CONFIG: Record<string, { label: string; bg: string; border: string; icon: any }> = {
@@ -36,8 +42,11 @@ const ACADEMIC_YEARS = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
 export const MentorDashboard: React.FC<MentorDashboardProps> = ({
   currentUser,
   assignedStudents,
+  scopedStudents,
   onReviewStudent,
+  onRefreshData,
 }) => {
+  const [mentorActiveTab, setMentorActiveTab] = useState<'stream' | 'management' | 'attendance'>('stream');
   const [filterYear, setFilterYear] = useState<string>('All Years');
   const [filterDept, setFilterDept] = useState<string>('All Departments');
   const [filterStatus, setFilterStatus] = useState<string>('All Status');
@@ -45,6 +54,19 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
   const [reviewModalStudent, setReviewModalStudent] = useState<StudentRecord | null>(null);
   const [reviewRemarks, setReviewRemarks] = useState('');
   const [reviewSuccess, setReviewSuccess] = useState(false);
+
+  const mentorDept = currentUser.departmentCode || currentUser.dept?.split(' ')[0] || 'CSEBS';
+
+  // Scoped students within mentor's authorized department or assigned scope
+  const effectiveScopedStudents = useMemo(() => {
+    if (scopedStudents && scopedStudents.length > 0) return scopedStudents;
+    return internshipRepository.getStudentsForMentorScope(currentUser.id, mentorDept, currentUser);
+  }, [scopedStudents, currentUser, mentorDept]);
+
+  // Scoped attendance sessions
+  const attendanceSessions = useMemo(() => {
+    return internshipRepository.getAttendanceSessionsForScope(currentUser.id, mentorDept, currentUser);
+  }, [currentUser, mentorDept]);
 
   // Derive distinct departments represented among this mentor's assigned students
   const mentorDepartments = useMemo(() => {
@@ -130,7 +152,79 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
         </div>
       </div>
 
-      {/* 6 Top Metric Cards (Calculated strictly from assigned students) */}
+      {/* Mentor Workspace Tabs */}
+      <div className="flex flex-wrap items-center gap-2 border-b border-[#E3E1EA] pb-2">
+        <button
+          onClick={() => setMentorActiveTab('stream')}
+          className={`px-4 py-2.5 text-xs font-bold rounded-xl transition-all flex items-center space-x-2 ${
+            mentorActiveTab === 'stream'
+              ? 'bg-[#24389C] text-white shadow-xs'
+              : 'bg-white text-[#57657A] hover:bg-[#EFEDF6] border border-[#E3E1EA]'
+          }`}
+        >
+          <TrendingUp className="w-4 h-4" />
+          <span>Mentee Progress & Log Stream</span>
+          <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/20 ml-1 font-bold">
+            {assignedStudents.length}
+          </span>
+        </button>
+
+        <button
+          onClick={() => setMentorActiveTab('management')}
+          className={`px-4 py-2.5 text-xs font-bold rounded-xl transition-all flex items-center space-x-2 ${
+            mentorActiveTab === 'management'
+              ? 'bg-[#24389C] text-white shadow-xs'
+              : 'bg-white text-[#57657A] hover:bg-[#EFEDF6] border border-[#E3E1EA]'
+          }`}
+        >
+          <Users className="w-4 h-4" />
+          <span>Student Directory & Management</span>
+          <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-900 ml-1 font-bold">
+            {effectiveScopedStudents.length}
+          </span>
+        </button>
+
+        <button
+          onClick={() => setMentorActiveTab('attendance')}
+          className={`px-4 py-2.5 text-xs font-bold rounded-xl transition-all flex items-center space-x-2 ${
+            mentorActiveTab === 'attendance'
+              ? 'bg-[#24389C] text-white shadow-xs'
+              : 'bg-white text-[#57657A] hover:bg-[#EFEDF6] border border-[#E3E1EA]'
+          }`}
+        >
+          <Clock className="w-4 h-4" />
+          <span>Attendance & Verification Overview</span>
+          <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-900 ml-1 font-bold">
+            {attendanceSessions.length}
+          </span>
+        </button>
+      </div>
+
+      {/* TAB 2: STUDENT DIRECTORY & ONBOARDING / BULK IMPORT / ASSIGNMENT */}
+      {mentorActiveTab === 'management' && (
+        <MentorStudentManagementView
+          currentUser={currentUser}
+          scopedStudents={effectiveScopedStudents}
+          onRefreshData={onRefreshData}
+        />
+      )}
+
+      {/* TAB 3: ATTENDANCE OVERVIEW & VERIFICATION */}
+      {mentorActiveTab === 'attendance' && (
+        <MentorAttendanceOverview
+          currentUser={currentUser}
+          attendanceSessions={attendanceSessions}
+          onVerifySession={async (sessId, isVer, rem) => {
+            await internshipRepository.verifyAttendanceSession(sessId, isVer, rem, currentUser);
+            if (onRefreshData) onRefreshData();
+          }}
+        />
+      )}
+
+      {/* TAB 1: ORIGINAL MENTEE PROGRESS STREAM */}
+      {mentorActiveTab === 'stream' && (
+        <>
+          {/* 6 Top Metric Cards (Calculated strictly from assigned students) */}
       <div className="grid grid-cols-2 sm:grid-cols-6 gap-3">
         <div 
           onClick={() => { setFilterYear('All Years'); setFilterDept('All Departments'); setFilterStatus('All Status'); }}
@@ -369,6 +463,8 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
           })
         )}
       </div>
+      </>
+      )}
 
       {/* Review Feedback Modal */}
       {reviewModalStudent && (

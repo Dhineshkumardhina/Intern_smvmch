@@ -1,4 +1,4 @@
-export type UserRole = 'student' | 'mentor' | 'hod' | 'admin';
+export type UserRole = 'hod' | 'mentor' | 'student' | 'admin';
 
 export interface AuthUser {
   id: string;
@@ -6,7 +6,7 @@ export interface AuthUser {
   email: string;
   role: UserRole;
   dept: string;
-  departmentCode?: string;
+  departmentCode: string;
   phone?: string;
   year?: string;
   college: string;
@@ -18,6 +18,7 @@ export interface AuthUser {
   endDate?: string;
   internshipDescription?: string;
   setupComplete?: boolean;
+  isActive: boolean;
 }
 
 export interface RegisterStudentParams {

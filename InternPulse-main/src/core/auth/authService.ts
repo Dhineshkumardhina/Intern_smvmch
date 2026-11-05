@@ -1,6 +1,6 @@
 import { AuthUser, RegisterStudentParams, InternshipSetupParams, AuthResponse, UserRole } from './authUser';
 import { COLLEGE_NAME } from './demoAccounts';
-import { getSupabaseClient, isSupabaseConfigured } from '../../lib/supabase';
+import { getSupabaseClient, isSupabaseConfigured, DbProfile } from '../../lib/supabase';
 import { internshipRepository } from '../repository/internshipRepository';
 
 export interface IAuthService {
@@ -8,49 +8,30 @@ export interface IAuthService {
   registerStudent(params: RegisterStudentParams): Promise<AuthResponse>;
   completeInternshipSetup(studentId: string, details: InternshipSetupParams): Promise<AuthResponse>;
   resetPassword(email: string): Promise<{ success: boolean; message: string }>;
+  updatePassword(newPassword: string): Promise<{ success: boolean; message: string }>;
   logout(): Promise<void>;
   getCurrentUser(): AuthUser | null;
   isAuthenticated(): boolean;
   getCurrentUserRole(): UserRole | null;
+  restoreSession(): Promise<AuthUser | null>;
   initAuthListener(onStateChange?: (user: AuthUser | null) => void): () => void;
   provisionSupabaseAccount(email: string, password: string, role: UserRole, metadata: Partial<AuthUser>): Promise<AuthResponse>;
 }
 
-const SESSION_KEY = 'internpulse_auth_session_supabase';
-
-class SupabaseAuthService implements IAuthService {
+class ProductionSupabaseAuthService implements IAuthService {
   private currentUser: AuthUser | null = null;
   private authListeners: Set<(user: AuthUser | null) => void> = new Set();
+  private isInitialized = false;
 
   constructor() {
-    this.loadCachedSession();
-  }
-
-  private loadCachedSession(): void {
-    try {
-      const sessionJson = localStorage.getItem(SESSION_KEY);
-      if (sessionJson) {
-        this.currentUser = JSON.parse(sessionJson);
-      }
-    } catch (e) {
-      console.error('Error loading auth state from storage:', e);
-    }
-  }
-
-  private persistSession(): void {
-    try {
-      if (this.currentUser) {
-        localStorage.setItem(SESSION_KEY, JSON.stringify(this.currentUser));
-      } else {
-        localStorage.removeItem(SESSION_KEY);
-      }
-    } catch (e) {
-      console.error('Error persisting auth session:', e);
-    }
+    // Session restoration is performed asynchronously against Supabase Auth
+    this.restoreSession().catch((err) => {
+      console.warn('Initial session restoration check:', err);
+    });
   }
 
   private notifyAuthChange(): void {
-    this.authListeners.forEach(listener => {
+    this.authListeners.forEach((listener) => {
       try {
         listener(this.currentUser);
       } catch (err) {
@@ -59,9 +40,58 @@ class SupabaseAuthService implements IAuthService {
     });
   }
 
+  /**
+   * Secure Session Restoration:
+   * Restores session exclusively from Supabase Auth's cryptographically signed session token.
+   * Validates account activation status against the authoritative database `profiles` table.
+   * Rejects expired, tampered, or unauthenticated states.
+   */
+  public async restoreSession(): Promise<AuthUser | null> {
+    const client = getSupabaseClient();
+    if (!client) {
+      this.currentUser = null;
+      return null;
+    }
+
+    try {
+      const { data: sessionData, error: sessionError } = await client.auth.getSession();
+      if (sessionError || !sessionData.session || !sessionData.session.user) {
+        this.currentUser = null;
+        return null;
+      }
+
+      const user = sessionData.session.user;
+      const profile = await this.fetchAuthoritativeProfile(user.id, user.email || '');
+
+      if (!profile || profile.isActive === false) {
+        // Inactive or missing profile: revoke session immediately
+        await client.auth.signOut();
+        this.currentUser = null;
+        this.notifyAuthChange();
+        return null;
+      }
+
+      this.currentUser = profile;
+      this.notifyAuthChange();
+      return this.currentUser;
+    } catch (err) {
+      console.warn('Error during session restoration:', err);
+      this.currentUser = null;
+      return null;
+    } finally {
+      this.isInitialized = true;
+    }
+  }
+
+  /**
+   * Subscribes to Supabase Auth state changes.
+   * Guarantees that any server-side sign out or token expiration updates application state.
+   */
   public initAuthListener(onStateChange?: (user: AuthUser | null) => void): () => void {
     if (onStateChange) {
       this.authListeners.add(onStateChange);
+      // Immediately call with current state
+      onStateChange(this.currentUser);
     }
 
     const client = getSupabaseClient();
@@ -71,19 +101,22 @@ class SupabaseAuthService implements IAuthService {
       };
     }
 
-    // Subscribe to Supabase Auth state changes
     const { data: authListener } = client.auth.onAuthStateChange(async (event, session) => {
-      if (session?.user) {
-        if (!this.currentUser || this.currentUser.email !== session.user.email) {
-          const userProfile = await this.resolveUserProfile(session.user.email || '', session.user.user_metadata);
-          this.currentUser = userProfile;
-          this.persistSession();
+      if (event === 'SIGNED_OUT' || !session?.user) {
+        this.currentUser = null;
+        this.notifyAuthChange();
+      } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+        const user = session.user;
+        const profile = await this.fetchAuthoritativeProfile(user.id, user.email || '');
+
+        if (!profile || profile.isActive === false) {
+          await client.auth.signOut();
+          this.currentUser = null;
+          this.notifyAuthChange();
+        } else {
+          this.currentUser = profile;
           this.notifyAuthChange();
         }
-      } else if (event === 'SIGNED_OUT') {
-        this.currentUser = null;
-        this.persistSession();
-        this.notifyAuthChange();
       }
     });
 
@@ -94,237 +127,257 @@ class SupabaseAuthService implements IAuthService {
   }
 
   /**
-   * Resolves full user profile by querying Supabase tables (students, mentors, hods)
-   * and fallback to user_metadata.
+   * Fetches authoritative user profile from the database (`profiles` table).
+   * Eliminates role inference from emails, usernames, or client assertions.
    */
-  private async resolveUserProfile(email: string, userMetadata?: Record<string, any>): Promise<AuthUser> {
+  private async fetchAuthoritativeProfile(userId: string, email: string): Promise<AuthUser | null> {
     const client = getSupabaseClient();
+    if (!client) return null;
+
     const queryEmail = email.trim().toLowerCase();
 
-    if (client) {
-      try {
-        // 1. Check HODs table
-        const { data: hodData } = await client
-          .from('hods')
-          .select('*')
-          .ilike('email', queryEmail)
-          .limit(1);
+    try {
+      // 1. Primary Query: authoritative `profiles` table
+      const { data: profileData, error: profileError } = await client
+        .from('profiles')
+        .select('*')
+        .or(`id.eq.${userId},email.ilike.${queryEmail}`)
+        .limit(1);
 
-        if (hodData && hodData.length > 0) {
-          const h = hodData[0];
-          const dept = (h.department_code || 'CSEBS').toUpperCase();
-          return {
-            id: h.hod_id || h.id,
-            name: h.name,
-            email: h.email,
-            role: 'hod',
-            dept: `${dept} Department`,
-            departmentCode: dept,
-            college: COLLEGE_NAME,
-            phone: h.phone,
-            setupComplete: true,
-          };
-        }
+      if (!profileError && profileData && profileData.length > 0) {
+        const p: DbProfile = profileData[0];
+        const deptCode = (p.department_code || 'CSEBS').toUpperCase();
+        const role = p.role as UserRole;
 
-        // 2. Check Mentors table
-        const { data: mentorData } = await client
-          .from('mentors')
-          .select('*')
-          .ilike('email', queryEmail)
-          .limit(1);
-
-        if (mentorData && mentorData.length > 0) {
-          const m = mentorData[0];
-          const dept = (m.department_code || 'CSEBS').toUpperCase();
-          return {
-            id: m.mentor_id || m.id,
-            name: m.name,
-            email: m.email,
-            role: 'mentor',
-            dept: `${dept} Department`,
-            departmentCode: dept,
-            college: COLLEGE_NAME,
-            phone: m.phone,
-            setupComplete: true,
-          };
-        }
-
-        // 3. Check Students table
-        const { data: studentData } = await client
-          .from('students')
-          .select('*')
-          .ilike('email', queryEmail)
-          .limit(1);
-
-        if (studentData && studentData.length > 0) {
-          const st = studentData[0];
-          const dept = (st.department_code || 'CSEBS').toUpperCase();
-          return {
-            id: st.student_id || st.id,
-            studentId: st.student_id || st.id,
-            mentorId: st.mentor_id,
-            name: st.student_name,
-            email: st.email,
-            role: 'student',
-            dept: `${dept} Department`,
-            departmentCode: dept,
-            year: st.academic_year || '3rd Year',
-            college: COLLEGE_NAME,
-            company: st.company,
-            internshipRole: st.role,
-            setupComplete: true,
-          };
-        }
-      } catch (err) {
-        console.warn('Error resolving user from Supabase tables:', err);
+        return {
+          id: p.id || userId,
+          studentId: p.student_id || (role === 'student' ? p.id : undefined),
+          mentorId: p.mentor_id || undefined,
+          name: p.full_name,
+          email: p.email,
+          role: role,
+          dept: `${deptCode} Department`,
+          departmentCode: deptCode,
+          phone: p.phone || undefined,
+          college: COLLEGE_NAME,
+          isActive: p.is_active ?? true,
+          setupComplete: true,
+        };
       }
+
+      // 2. Fallback check on institutional tables (HODs, Mentors, Students) for backwards compatibility
+      // A. Check HODs table
+      const { data: hodData } = await client
+        .from('hods')
+        .select('*')
+        .ilike('email', queryEmail)
+        .limit(1);
+
+      if (hodData && hodData.length > 0) {
+        const h = hodData[0];
+        const dept = (h.department_code || 'CSEBS').toUpperCase();
+        return {
+          id: h.hod_id || h.id || userId,
+          name: h.name,
+          email: h.email,
+          role: 'hod',
+          dept: `${dept} Department`,
+          departmentCode: dept,
+          college: COLLEGE_NAME,
+          phone: h.phone,
+          isActive: true,
+          setupComplete: true,
+        };
+      }
+
+      // B. Check Mentors table
+      const { data: mentorData } = await client
+        .from('mentors')
+        .select('*')
+        .ilike('email', queryEmail)
+        .limit(1);
+
+      if (mentorData && mentorData.length > 0) {
+        const m = mentorData[0];
+        const dept = (m.department_code || 'CSEBS').toUpperCase();
+        return {
+          id: m.mentor_id || m.id || userId,
+          name: m.name,
+          email: m.email,
+          role: 'mentor',
+          dept: `${dept} Department`,
+          departmentCode: dept,
+          college: COLLEGE_NAME,
+          phone: m.phone,
+          isActive: true,
+          setupComplete: true,
+        };
+      }
+
+      // C. Check Students table
+      const { data: studentData } = await client
+        .from('students')
+        .select('*')
+        .ilike('email', queryEmail)
+        .limit(1);
+
+      if (studentData && studentData.length > 0) {
+        const st = studentData[0];
+        const dept = (st.department_code || 'CSEBS').toUpperCase();
+        return {
+          id: st.student_id || st.id || userId,
+          studentId: st.student_id || st.id,
+          mentorId: st.mentor_id,
+          name: st.student_name,
+          email: st.email,
+          role: 'student',
+          dept: `${dept} Department`,
+          departmentCode: dept,
+          year: st.academic_year || '3rd Year',
+          college: COLLEGE_NAME,
+          company: st.company,
+          internshipRole: st.role,
+          isActive: true,
+          setupComplete: true,
+        };
+      }
+    } catch (err) {
+      console.warn('Error fetching user profile from Supabase:', err);
     }
 
-    // Fallback to metadata stored in Supabase Auth user record
-    const meta = userMetadata || {};
-    const role: UserRole = meta.role || 'student';
-    const deptCode = (meta.department || meta.departmentCode || 'CSEBS').toUpperCase();
-
-    return {
-      id: meta.studentId || meta.id || email.split('@')[0].toUpperCase(),
-      studentId: meta.studentId || (role === 'student' ? email.split('@')[0].toUpperCase() : undefined),
-      name: meta.fullName || meta.name || email.split('@')[0],
-      email: email,
-      role: role,
-      dept: `${deptCode} Department`,
-      departmentCode: deptCode,
-      year: meta.academicYear || '3rd Year',
-      college: COLLEGE_NAME,
-      phone: meta.phone,
-      setupComplete: role !== 'student' || meta.setupComplete === true,
-    };
+    return null;
   }
 
   /**
-   * Authenticates user using Supabase Auth signInWithPassword
+   * Production Login:
+   * Strictly verifies credentials against Supabase Auth.
+   * Completely eliminates simulated authentication and unauthenticated table fallback bypasses.
+   * Validates account status (`is_active`).
+   * Ensures authentication failures cannot create application sessions.
    */
   public async login(emailOrId: string, password: string): Promise<AuthResponse> {
     const client = getSupabaseClient();
     const query = emailOrId.trim();
 
     if (!client) {
+      this.currentUser = null;
       return {
         success: false,
         message: 'Supabase client is not initialized. Please verify configuration.',
       };
     }
 
+    if (!query) {
+      return { success: false, message: 'Please provide an email or registration ID.' };
+    }
+
+    if (!password) {
+      return { success: false, message: 'Please provide a password.' };
+    }
+
     let targetEmail = query;
 
-    // If input is an ID (e.g. 23CSEBS001, MENTOR_CSEBS_01, HOD_CSEBS_01), find their email in Supabase
+    // If identifier is an ID (e.g. 23CSEBS001, MENTOR_CSEBS_01, HOD_CSEBS_01), resolve the email from the database
     if (!query.includes('@')) {
       try {
-        const { data: st } = await client
-          .from('students')
+        const { data: prof } = await client
+          .from('profiles')
           .select('email')
-          .ilike('student_id', query)
+          .or(`student_id.ilike.${query},mentor_id.ilike.${query}`)
           .limit(1);
 
-        if (st && st.length > 0 && st[0].email) {
-          targetEmail = st[0].email;
+        if (prof && prof.length > 0 && prof[0].email) {
+          targetEmail = prof[0].email;
         } else {
-          const { data: mt } = await client
-            .from('mentors')
+          // Check legacy tables for ID lookup
+          const { data: st } = await client
+            .from('students')
             .select('email')
-            .ilike('mentor_id', query)
+            .ilike('student_id', query)
             .limit(1);
-          if (mt && mt.length > 0 && mt[0].email) {
-            targetEmail = mt[0].email;
+
+          if (st && st.length > 0 && st[0].email) {
+            targetEmail = st[0].email;
           } else {
-            const { data: hd } = await client
-              .from('hods')
+            const { data: mt } = await client
+              .from('mentors')
               .select('email')
-              .ilike('hod_id', query)
+              .ilike('mentor_id', query)
               .limit(1);
-            if (hd && hd.length > 0 && hd[0].email) {
-              targetEmail = hd[0].email;
+            if (mt && mt.length > 0 && mt[0].email) {
+              targetEmail = mt[0].email;
+            } else {
+              const { data: hd } = await client
+                .from('hods')
+                .select('email')
+                .ilike('hod_id', query)
+                .limit(1);
+              if (hd && hd.length > 0 && hd[0].email) {
+                targetEmail = hd[0].email;
+              }
             }
           }
         }
       } catch (e) {
-        console.warn('ID to email lookup note:', e);
+        console.warn('Identifier to email resolution note:', e);
       }
     }
 
-    // 1. Attempt Supabase Auth signInWithPassword
+    // 1. Authenticate strictly with Supabase Auth
     const { data: authData, error: authError } = await client.auth.signInWithPassword({
       email: targetEmail,
       password: password,
     });
 
-    if (authError) {
-      // If user is not yet activated in Supabase Auth auth.users, check if they exist in Supabase tables (mentors, hods, students)
-      const profile = await this.resolveUserProfile(targetEmail);
-      if (profile && profile.name && (profile.role === 'mentor' || profile.role === 'hod' || profile.role === 'student')) {
-        // Attempt to auto-provision into Supabase Auth with this password so user can seamlessly log in
-        try {
-          const { data: signUpData, error: signUpError } = await client.auth.signUp({
-            email: targetEmail,
-            password: password,
-            options: {
-              data: {
-                fullName: profile.name,
-                role: profile.role,
-                departmentCode: profile.departmentCode,
-                studentId: profile.studentId,
-                setupComplete: true,
-              },
-            },
-          });
-
-          if (!signUpError && (signUpData.user || signUpData.session)) {
-            this.currentUser = profile;
-            this.persistSession();
-            this.notifyAuthChange();
-            return {
-              success: true,
-              user: this.currentUser,
-            };
-          }
-        } catch (autoSignErr) {
-          console.warn('Auto sign-up into Supabase Auth error:', autoSignErr);
-        }
-
-        // Allow direct session access backed by Supabase DB records
-        this.currentUser = profile;
-        this.persistSession();
-        this.notifyAuthChange();
-        return {
-          success: true,
-          user: this.currentUser,
-        };
-      }
-
-      return {
-        success: false,
-        message: authError.message || 'Invalid email or password. Please verify your Supabase Auth credentials.',
-      };
-    }
-
-    if (authData.user) {
-      const userProfile = await this.resolveUserProfile(authData.user.email || targetEmail, authData.user.user_metadata);
-      this.currentUser = userProfile;
-      this.persistSession();
+    // 2. Reject failure: DO NOT fallback to unauthenticated bypass or grant fake sessions!
+    if (authError || !authData.session || !authData.user) {
+      this.currentUser = null;
       this.notifyAuthChange();
       return {
-        success: true,
-        user: this.currentUser,
+        success: false,
+        message: authError?.message || 'Invalid email or password. Please verify your credentials.',
       };
     }
 
+    // 3. Fetch authoritative profile from database
+    const userProfile = await this.fetchAuthoritativeProfile(authData.user.id, authData.user.email || targetEmail);
+
+    if (!userProfile) {
+      await client.auth.signOut();
+      this.currentUser = null;
+      this.notifyAuthChange();
+      return {
+        success: false,
+        message: 'No institutional profile found for this account. Please contact the Head of Department.',
+      };
+    }
+
+    // 4. Validate account status (Requirement 10)
+    if (userProfile.isActive === false) {
+      await client.auth.signOut();
+      this.currentUser = null;
+      this.notifyAuthChange();
+      return {
+        success: false,
+        message: 'Your account has been deactivated. Please contact your Head of Department.',
+      };
+    }
+
+    // 5. Establish secure session
+    this.currentUser = userProfile;
+    this.notifyAuthChange();
+
     return {
-      success: false,
-      message: 'Failed to sign in. Please try again.',
+      success: true,
+      user: this.currentUser,
     };
   }
 
   /**
-   * Registers a student into Supabase Auth & inserts into Supabase students table
+   * Student Self-Registration:
+   * Creates Supabase Auth user strictly under the 'student' role.
+   * Automatically provisions database profile with active status.
+   * Prevents unauthorized role escalation during registration.
    */
   public async registerStudent(params: RegisterStudentParams): Promise<AuthResponse> {
     const client = getSupabaseClient();
@@ -338,7 +391,7 @@ class SupabaseAuthService implements IAuthService {
     const email = params.email.trim().toLowerCase();
     const studentId = params.studentId.trim().toUpperCase();
 
-    // 1. Sign up user in Supabase Auth
+    // 1. Sign up user in Supabase Auth (Role strictly locked to 'student')
     const { data: authData, error: authError } = await client.auth.signUp({
       email: email,
       password: params.password,
@@ -346,7 +399,7 @@ class SupabaseAuthService implements IAuthService {
         data: {
           fullName: params.fullName.trim(),
           studentId: studentId,
-          role: 'student',
+          role: 'student', // Client cannot request 'hod' or 'mentor'
           phone: params.phone.trim(),
           academicYear: params.academicYear,
           department: params.department,
@@ -356,15 +409,15 @@ class SupabaseAuthService implements IAuthService {
       },
     });
 
-    if (authError) {
+    if (authError || !authData.user) {
       return {
         success: false,
-        message: authError.message || 'Registration failed in Supabase Auth.',
+        message: authError?.message || 'Registration failed in Supabase Auth.',
       };
     }
 
     const newUser: AuthUser = {
-      id: studentId,
+      id: authData.user.id,
       studentId: studentId,
       name: params.fullName.trim(),
       email: email,
@@ -374,10 +427,29 @@ class SupabaseAuthService implements IAuthService {
       dept: `${params.department} Department`,
       departmentCode: params.department,
       college: COLLEGE_NAME,
+      isActive: true,
       setupComplete: false,
     };
 
-    // 2. Insert into Supabase `students` table
+    // 2. Insert into authoritative `profiles` table
+    try {
+      await client
+        .from('profiles')
+        .upsert({
+          id: authData.user.id,
+          role: 'student',
+          full_name: newUser.name,
+          email: newUser.email,
+          phone: newUser.phone,
+          department_code: params.department,
+          student_id: studentId,
+          is_active: true,
+        }, { onConflict: 'id' });
+    } catch (e) {
+      console.warn('Profiles table upsert notice:', e);
+    }
+
+    // 3. Insert into legacy `students` table for compatibility
     try {
       await client
         .from('students')
@@ -399,7 +471,6 @@ class SupabaseAuthService implements IAuthService {
     }
 
     this.currentUser = newUser;
-    this.persistSession();
     this.notifyAuthChange();
 
     return {
@@ -433,7 +504,6 @@ class SupabaseAuthService implements IAuthService {
     };
 
     this.currentUser = updatedUser;
-    this.persistSession();
     this.notifyAuthChange();
 
     // Push update to Supabase
@@ -479,12 +549,16 @@ class SupabaseAuthService implements IAuthService {
   }
 
   /**
-   * Password reset via Supabase Auth
+   * Password reset request via Supabase Auth
    */
   public async resetPassword(email: string): Promise<{ success: boolean; message: string }> {
     const client = getSupabaseClient();
     if (!client) {
       return { success: false, message: 'Supabase client is not initialized.' };
+    }
+
+    if (!email || !email.includes('@')) {
+      return { success: false, message: 'Please provide a valid email address.' };
     }
 
     const { error } = await client.auth.resetPasswordForEmail(email.trim());
@@ -499,30 +573,20 @@ class SupabaseAuthService implements IAuthService {
   }
 
   /**
-   * Provisions or registers an account into Supabase Auth
+   * Password update (e.g. after receiving reset link or inside account settings)
    */
-  public async provisionSupabaseAccount(
-    email: string, 
-    password: string, 
-    role: UserRole, 
-    metadata: Partial<AuthUser>
-  ): Promise<AuthResponse> {
+  public async updatePassword(newPassword: string): Promise<{ success: boolean; message: string }> {
     const client = getSupabaseClient();
     if (!client) {
-      return { success: false, message: 'Supabase is not configured.' };
+      return { success: false, message: 'Supabase client is not initialized.' };
     }
 
-    const { data, error } = await client.auth.signUp({
-      email: email.trim().toLowerCase(),
-      password: password,
-      options: {
-        data: {
-          role: role,
-          fullName: metadata.name || email.split('@')[0],
-          departmentCode: metadata.departmentCode || 'CSEBS',
-          ...metadata,
-        },
-      },
+    if (!newPassword || newPassword.length < 6) {
+      return { success: false, message: 'Password must be at least 6 characters long.' };
+    }
+
+    const { error } = await client.auth.updateUser({
+      password: newPassword,
     });
 
     if (error) {
@@ -531,10 +595,68 @@ class SupabaseAuthService implements IAuthService {
 
     return {
       success: true,
-      message: `Account for ${email} created in Supabase Auth!`,
+      message: 'Password successfully updated.',
     };
   }
 
+  /**
+   * Provision account into Supabase Auth with database profile
+   */
+  public async provisionSupabaseAccount(
+    email: string,
+    password: string,
+    role: UserRole,
+    metadata: Partial<AuthUser>
+  ): Promise<AuthResponse> {
+    const client = getSupabaseClient();
+    if (!client) {
+      return { success: false, message: 'Supabase is not configured.' };
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+    const targetRole: UserRole = role === 'admin' ? 'hod' : role;
+
+    const { data, error } = await client.auth.signUp({
+      email: cleanEmail,
+      password: password,
+      options: {
+        data: {
+          role: targetRole,
+          fullName: metadata.name || cleanEmail.split('@')[0],
+          departmentCode: metadata.departmentCode || 'CSEBS',
+          ...metadata,
+        },
+      },
+    });
+
+    if (error || !data.user) {
+      return { success: false, message: error?.message || 'Provisioning failed' };
+    }
+
+    // Insert into `profiles`
+    try {
+      await client.from('profiles').upsert({
+        id: data.user.id,
+        role: targetRole,
+        full_name: metadata.name || cleanEmail.split('@')[0],
+        email: cleanEmail,
+        department_code: metadata.departmentCode || 'CSEBS',
+        is_active: true,
+      }, { onConflict: 'id' });
+    } catch (e) {
+      console.warn('Error saving profile during provisioning:', e);
+    }
+
+    return {
+      success: true,
+      message: `Account for ${cleanEmail} created in Supabase Auth!`,
+    };
+  }
+
+  /**
+   * Secure Logout:
+   * Revokes Supabase Auth session token, clears internal state, and notifies listeners.
+   */
   public async logout(): Promise<void> {
     const client = getSupabaseClient();
     if (client) {
@@ -545,7 +667,6 @@ class SupabaseAuthService implements IAuthService {
       }
     }
     this.currentUser = null;
-    this.persistSession();
     this.notifyAuthChange();
   }
 
@@ -554,7 +675,7 @@ class SupabaseAuthService implements IAuthService {
   }
 
   public isAuthenticated(): boolean {
-    return this.currentUser !== null;
+    return this.currentUser !== null && this.currentUser.isActive === true;
   }
 
   public getCurrentUserRole(): UserRole | null {
@@ -562,4 +683,4 @@ class SupabaseAuthService implements IAuthService {
   }
 }
 
-export const authService = new SupabaseAuthService();
+export const authService = new ProductionSupabaseAuthService();

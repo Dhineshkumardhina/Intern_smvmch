@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../app/router.dart';
+import '../../../../core/auth/supabase_auth_service.dart';
 import '../../../../core/constants/academic_constants.dart';
 import '../../../../core/constants/status_constants.dart';
 import '../../../../core/theme/color_schemes.dart';
@@ -140,7 +141,33 @@ class _MentorDashboardScreenState extends State<MentorDashboardScreen> {
           ),
           IconButton(
             icon: const Icon(Icons.logout_rounded),
-            onPressed: () => context.go(AppRoutes.login),
+            tooltip: 'Logout',
+            onPressed: () async {
+              final confirm = await showDialog<bool>(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  title: const Text('Log Out'),
+                  content: const Text('Are you sure you want to log out of InternPulse?'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx, false),
+                      child: const Text('Cancel'),
+                    ),
+                    FilledButton(
+                      onPressed: () => Navigator.pop(ctx, true),
+                      style: FilledButton.styleFrom(backgroundColor: PulseColors.error),
+                      child: const Text('Log Out'),
+                    ),
+                  ],
+                ),
+              );
+              if (confirm == true) {
+                await SupabaseAuthService().signOut();
+                if (context.mounted) {
+                  context.go(AppRoutes.login);
+                }
+              }
+            },
           ),
         ],
       ),
