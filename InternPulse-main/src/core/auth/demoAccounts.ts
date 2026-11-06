@@ -25,152 +25,217 @@ export interface SampleLoginAccount {
 }
 
 /**
+ * Returns immediate, pre-configured institutional sample accounts for SMVEC.
+ * These are available synchronously to ensure the UI NEVER renders 0 accounts
+ * while waiting for remote database queries or if offline.
+ */
+export function getDefaultSampleLogins(): {
+  hods: SampleLoginAccount[];
+  mentors: SampleLoginAccount[];
+  students: SampleLoginAccount[];
+  admins: SampleLoginAccount[];
+} {
+  return {
+    hods: [
+      {
+        id: 'HOD_CSEBS',
+        name: 'Dr. V. Gomathi',
+        email: 'hod.csebs@smvec.ac.in',
+        role: 'hod',
+        departmentCode: 'CSEBS',
+        designationOrYear: 'HOD, CSEBS',
+        password: 'password123',
+      },
+      {
+        id: 'HOD_IT',
+        name: 'Dr. M. Auxilia',
+        email: 'hod.it@smvec.ac.in',
+        role: 'hod',
+        departmentCode: 'IT',
+        designationOrYear: 'HOD, IT',
+        password: 'password123',
+      },
+      {
+        id: 'HOD_SMVEC',
+        name: 'Dr. K. Premkumar',
+        email: 'hod@smvec.ac.in',
+        role: 'hod',
+        departmentCode: 'CSEBS',
+        designationOrYear: 'Senior HOD, SMVEC',
+        password: 'password123',
+      },
+    ],
+    mentors: [
+      {
+        id: 'MENTOR_CSEBS_01',
+        name: 'Prof. Anitha Kumar',
+        email: 'anitha.mentor@college.edu',
+        role: 'mentor',
+        departmentCode: 'CSEBS',
+        designationOrYear: 'Assistant Professor & Mentor',
+        password: 'password123',
+      },
+      {
+        id: 'MENTOR_CSEBS_02',
+        name: 'Prof. V. Anand',
+        email: 'mentor@smvec.ac.in',
+        role: 'mentor',
+        departmentCode: 'CSEBS',
+        designationOrYear: 'Senior Faculty Mentor',
+        password: 'password123',
+      },
+      {
+        id: 'MENTOR_IT_01',
+        name: 'Prof. R. Balamurugan',
+        email: 'balamurugan.mentor@college.edu',
+        role: 'mentor',
+        departmentCode: 'IT',
+        designationOrYear: 'Associate Professor & Mentor',
+        password: 'password123',
+      },
+      {
+        id: 'MENTOR_CSE_01',
+        name: 'Prof. K. Sridhar',
+        email: 'sridhar.mentor@college.edu',
+        role: 'mentor',
+        departmentCode: 'CSE',
+        designationOrYear: 'Faculty Mentor',
+        password: 'password123',
+      },
+    ],
+    students: [
+      {
+        id: '23CSEBS001',
+        name: 'Dhinesh Kumar R',
+        email: 'student@smvec.ac.in',
+        role: 'student',
+        departmentCode: 'CSEBS',
+        designationOrYear: '3rd Year Intern (Zoho)',
+        password: 'password123',
+      },
+      {
+        id: '23CSEBS002',
+        name: 'Harish R',
+        email: '23csebs001@college.edu',
+        role: 'student',
+        departmentCode: 'CSEBS',
+        designationOrYear: '3rd Year Intern (TCS)',
+        password: 'password123',
+      },
+      {
+        id: '23CSEBS003',
+        name: 'Priya M',
+        email: '23csebs002@college.edu',
+        role: 'student',
+        departmentCode: 'CSEBS',
+        designationOrYear: '3rd Year Intern (Infosys)',
+        password: 'password123',
+      },
+      {
+        id: '23IT001',
+        name: 'Kavitha K',
+        email: '23it001@college.edu',
+        role: 'student',
+        departmentCode: 'IT',
+        designationOrYear: '3rd Year Intern (Wipro)',
+        password: 'password123',
+      },
+    ],
+    admins: [
+      {
+        id: 'ADMIN_PLATFORM_01',
+        name: 'SMVEC Platform Administrator',
+        email: 'superadmin@smvec.ac.in',
+        role: 'platform_super_admin',
+        departmentCode: 'ADMIN',
+        designationOrYear: 'Platform Super Admin',
+        password: 'password123',
+      },
+    ],
+  };
+}
+
+/**
  * Fetches institutional sample accounts directly from your Supabase database (`profiles` table)
- * for test and preview convenience. Credentials must be verified through Supabase Auth.
+ * for test and preview convenience. Immediately falls back to seeded SMVEC accounts if offline.
  */
 export async function fetchSupabaseLiveSampleLogins(): Promise<{
   hods: SampleLoginAccount[];
   mentors: SampleLoginAccount[];
   students: SampleLoginAccount[];
+  admins: SampleLoginAccount[];
 }> {
-  const client = getSupabaseClient();
-  const result: {
-    hods: SampleLoginAccount[];
-    mentors: SampleLoginAccount[];
-    students: SampleLoginAccount[];
-  } = {
-    hods: [],
-    mentors: [],
-    students: [],
-  };
+  const defaults = getDefaultSampleLogins();
+  if (!isDemoAccountAccessPermitted()) {
+    return { hods: [], mentors: [], students: [], admins: [] };
+  }
 
-  if (!client || !isDemoAccountAccessPermitted()) return result;
+  const client = getSupabaseClient();
+  if (!client) {
+    return defaults;
+  }
 
   try {
-    // 1. Primary: query authoritative `profiles` table
-    const { data: profiles, error } = await client
-      .from('profiles')
-      .select('*')
-      .eq('is_active', true)
-      .limit(30);
+    // Fast 1500ms timeout race so UI NEVER hangs on unresolvable DNS or network disconnects
+    const fetchDb = async () => {
+      const { data: profiles, error } = await client
+        .from('profiles')
+        .select('*')
+        .eq('is_active', true)
+        .limit(30);
 
-    if (!error && profiles && profiles.length > 0) {
-      profiles.forEach((p: DbProfile) => {
-        const item: SampleLoginAccount = {
-          id: p.student_id || p.mentor_id || p.id,
-          name: p.full_name,
-          email: p.email,
-          role: p.role,
-          departmentCode: (p.department_code || 'CSEBS').toUpperCase(),
-          designationOrYear: p.role === 'hod' ? `HOD, ${(p.department_code || 'CSEBS').toUpperCase()}`
-            : p.role === 'mentor' ? 'Faculty Mentor'
-            : 'Student Intern',
-          password: 'password123',
-        };
+      if (!error && profiles && profiles.length > 0) {
+        const live: {
+          hods: SampleLoginAccount[];
+          mentors: SampleLoginAccount[];
+          students: SampleLoginAccount[];
+          admins: SampleLoginAccount[];
+        } = { hods: [], mentors: [], students: [], admins: [] };
 
-        if (p.role === 'hod') result.hods.push(item);
-        else if (p.role === 'mentor') result.mentors.push(item);
-        else if (p.role === 'student') result.students.push(item);
-      });
+        profiles.forEach((p: DbProfile) => {
+          const item: SampleLoginAccount = {
+            id: p.student_id || p.mentor_id || p.id,
+            name: p.full_name,
+            email: p.email,
+            role: p.role,
+            departmentCode: (p.department_code || 'CSEBS').toUpperCase(),
+            designationOrYear: p.role === 'hod' ? `HOD, ${(p.department_code || 'CSEBS').toUpperCase()}`
+              : p.role === 'mentor' ? 'Faculty Mentor'
+              : p.role === 'platform_super_admin' || p.role === 'super_admin' || p.role === 'admin' ? 'Institutional Administrator'
+              : 'Student Intern',
+            password: 'password123',
+          };
 
-      if (result.hods.length > 0 || result.mentors.length > 0 || result.students.length > 0) {
-        return result;
+          if (p.role === 'hod') live.hods.push(item);
+          else if (p.role === 'mentor') live.mentors.push(item);
+          else if (p.role === 'student') live.students.push(item);
+          else if (p.role === 'platform_super_admin' || p.role === 'super_admin' || p.role === 'admin') live.admins.push(item);
+        });
+
+        if (live.hods.length > 0 || live.mentors.length > 0 || live.students.length > 0) {
+          return {
+            hods: live.hods.length > 0 ? live.hods : defaults.hods,
+            mentors: live.mentors.length > 0 ? live.mentors : defaults.mentors,
+            students: live.students.length > 0 ? live.students : defaults.students,
+            admins: live.admins.length > 0 ? live.admins : defaults.admins,
+          };
+        }
       }
-    }
+      return defaults;
+    };
 
-    // 2. Secondary fallback: check legacy tables
-    const { data: hodData } = await client
-      .from('hods')
-      .select('*')
-      .order('department_code', { ascending: true });
+    const timeout = new Promise<{
+      hods: SampleLoginAccount[];
+      mentors: SampleLoginAccount[];
+      students: SampleLoginAccount[];
+      admins: SampleLoginAccount[];
+    }>((resolve) => setTimeout(() => resolve(defaults), 1500));
 
-    if (hodData && hodData.length > 0) {
-      result.hods = hodData.map((h: DbHod) => ({
-        id: h.hod_id || h.id || 'HOD',
-        name: h.name || 'Head of Department',
-        email: h.email,
-        role: 'hod' as UserRole,
-        departmentCode: (h.department_code || 'CSEBS').toUpperCase(),
-        designationOrYear: `HOD, ${(h.department_code || 'CSEBS').toUpperCase()}`,
-        password: 'password123',
-      }));
-    }
-
-    const { data: mentorData } = await client
-      .from('mentors')
-      .select('*')
-      .order('name', { ascending: true });
-
-    if (mentorData && mentorData.length > 0) {
-      result.mentors = mentorData.map((m: DbMentor) => ({
-        id: m.mentor_id || m.id || 'MENTOR',
-        name: m.name || 'Faculty Mentor',
-        email: m.email,
-        role: 'mentor' as UserRole,
-        departmentCode: (m.department_code || 'CSEBS').toUpperCase(),
-        designationOrYear: m.designation || 'Faculty Mentor',
-        password: 'password123',
-      }));
-    }
-
-    const { data: studentData } = await client
-      .from('students')
-      .select('*')
-      .limit(10);
-
-    if (studentData && studentData.length > 0) {
-      result.students = studentData.map((s: DbStudent) => ({
-        id: s.student_id || s.id || 'STUDENT',
-        name: s.student_name || 'Student',
-        email: s.email,
-        role: 'student' as UserRole,
-        departmentCode: (s.department_code || 'CSEBS').toUpperCase(),
-        designationOrYear: s.academic_year || '3rd Year',
-        password: 'password123',
-      }));
-    }
+    return await Promise.race([fetchDb(), timeout]);
   } catch (err) {
-    console.warn('Error fetching sample logins from Supabase:', err);
+    console.warn('Live sample login fetch failed; using default SMVEC accounts:', err);
+    return defaults;
   }
-
-  // 3. Offline / Dev Fallback: If cloud Supabase is unreachable or unprovisioned, populate default SMVEC accounts
-  if (isDemoAccountAccessPermitted()) {
-    if (result.hods.length === 0) {
-      result.hods = DEFAULT_HODS.map(h => ({
-        id: h.hodId || h.id,
-        name: h.name,
-        email: h.email,
-        role: 'hod' as UserRole,
-        departmentCode: h.departmentCode,
-        designationOrYear: `HOD, ${h.departmentCode}`,
-        password: 'password123',
-      }));
-    }
-    if (result.mentors.length === 0) {
-      result.mentors = DEFAULT_MENTORS.map(m => ({
-        id: m.id,
-        name: m.name,
-        email: m.email,
-        role: 'mentor' as UserRole,
-        departmentCode: m.departmentCode,
-        designationOrYear: m.designation || 'Faculty Mentor',
-        password: 'password123',
-      }));
-    }
-    if (result.students.length === 0) {
-      result.students = DEFAULT_STUDENTS.slice(0, 10).map(s => ({
-        id: s.studentId,
-        name: s.studentName,
-        email: s.email || `${s.studentId.toLowerCase()}@college.edu`,
-        role: 'student' as UserRole,
-        departmentCode: s.departmentCode,
-        designationOrYear: s.academicYear,
-        password: 'password123',
-      }));
-    }
-  }
-
-  return result;
 }
 
 export const DEMO_ACCOUNTS: { email: string; password?: string; user: AuthUser }[] = [];

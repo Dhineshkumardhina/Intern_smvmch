@@ -16,11 +16,12 @@ import {
   GraduationCap,
   Sparkles,
   RefreshCw,
-  ImageIcon
+  ImageIcon,
+  UserCheck
 } from 'lucide-react';
 import { authService } from '../core/auth/authService';
 import { UserRole } from '../core/auth/authUser';
-import { fetchSupabaseLiveSampleLogins, SampleLoginAccount } from '../core/auth/demoAccounts';
+import { fetchSupabaseLiveSampleLogins, getDefaultSampleLogins, SampleLoginAccount } from '../core/auth/demoAccounts';
 import { AppLogo } from './AppLogo';
 import { LogoUploadModal } from './LogoUploadModal';
 
@@ -43,12 +44,14 @@ export const LoginPage: React.FC<LoginPageProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [isLogoModalOpen, setIsLogoModalOpen] = useState(false);
 
-  // Live Supabase table accounts (HODs & Mentors)
-  const [supabaseHods, setSupabaseHods] = useState<SampleLoginAccount[]>([]);
-  const [supabaseMentors, setSupabaseMentors] = useState<SampleLoginAccount[]>([]);
-  const [supabaseStudents, setSupabaseStudents] = useState<SampleLoginAccount[]>([]);
+  // Seed default sample accounts immediately so 0 accounts are never shown
+  const initialLogins = getDefaultSampleLogins();
+  const [supabaseHods, setSupabaseHods] = useState<SampleLoginAccount[]>(initialLogins.hods);
+  const [supabaseMentors, setSupabaseMentors] = useState<SampleLoginAccount[]>(initialLogins.mentors);
+  const [supabaseStudents, setSupabaseStudents] = useState<SampleLoginAccount[]>(initialLogins.students);
+  const [supabaseAdmins, setSupabaseAdmins] = useState<SampleLoginAccount[]>(initialLogins.admins || []);
   const [loadingSupabaseAccounts, setLoadingSupabaseAccounts] = useState(false);
-  const [activeTab, setActiveTab] = useState<'hod' | 'mentor' | 'student'>('hod');
+  const [activeTab, setActiveTab] = useState<'hod' | 'mentor' | 'student' | 'admin'>('hod');
 
   // Quick account creator modal for Supabase Auth
   const [showProvisionModal, setShowProvisionModal] = useState(false);
@@ -60,14 +63,15 @@ export const LoginPage: React.FC<LoginPageProps> = ({
   const [provLoading, setProvLoading] = useState(false);
   const [provSuccess, setProvSuccess] = useState<string | null>(null);
 
-  // Load sample logins directly from Supabase database tables
+  // Load sample logins directly from Supabase database tables or pre-seeded fallbacks
   const loadSupabaseSampleLogins = async () => {
     setLoadingSupabaseAccounts(true);
     try {
       const data = await fetchSupabaseLiveSampleLogins();
-      setSupabaseHods(data.hods);
-      setSupabaseMentors(data.mentors);
-      setSupabaseStudents(data.students);
+      if (data.hods && data.hods.length > 0) setSupabaseHods(data.hods);
+      if (data.mentors && data.mentors.length > 0) setSupabaseMentors(data.mentors);
+      if (data.students && data.students.length > 0) setSupabaseStudents(data.students);
+      if (data.admins && data.admins.length > 0) setSupabaseAdmins(data.admins);
     } catch (err) {
       console.warn('Failed to load sample logins from Supabase:', err);
     } finally {
@@ -195,39 +199,50 @@ export const LoginPage: React.FC<LoginPageProps> = ({
           </p>
 
           {/* Role Tabs */}
-          <div className="flex space-x-1 p-1 bg-[#F4F2FA] rounded-2xl mb-3 text-xs">
+          <div className="flex space-x-1 p-1 bg-[#F4F2FA] rounded-2xl mb-3 text-xs overflow-x-auto">
             <button
               onClick={() => setActiveTab('hod')}
-              className={`flex-1 py-1.5 px-3 rounded-xl font-semibold flex items-center justify-center space-x-1.5 transition-all ${
+              className={`flex-1 py-1.5 px-2.5 rounded-xl font-semibold flex items-center justify-center space-x-1 transition-all text-[11px] sm:text-xs ${
                 activeTab === 'hod'
                   ? 'bg-white text-[#24389C] shadow-xs'
                   : 'text-[#57657A] hover:text-[#1A1B22]'
               }`}
             >
-              <Shield className="w-3.5 h-3.5" />
-              <span>HOD Logins ({supabaseHods.length})</span>
+              <Shield className="w-3.5 h-3.5 shrink-0" />
+              <span>HOD ({supabaseHods.length})</span>
             </button>
             <button
               onClick={() => setActiveTab('mentor')}
-              className={`flex-1 py-1.5 px-3 rounded-xl font-semibold flex items-center justify-center space-x-1.5 transition-all ${
+              className={`flex-1 py-1.5 px-2.5 rounded-xl font-semibold flex items-center justify-center space-x-1 transition-all text-[11px] sm:text-xs ${
                 activeTab === 'mentor'
                   ? 'bg-white text-[#24389C] shadow-xs'
                   : 'text-[#57657A] hover:text-[#1A1B22]'
               }`}
             >
-              <Users className="w-3.5 h-3.5" />
-              <span>Mentor Logins ({supabaseMentors.length})</span>
+              <Users className="w-3.5 h-3.5 shrink-0" />
+              <span>Mentors ({supabaseMentors.length})</span>
             </button>
             <button
               onClick={() => setActiveTab('student')}
-              className={`flex-1 py-1.5 px-3 rounded-xl font-semibold flex items-center justify-center space-x-1.5 transition-all ${
+              className={`flex-1 py-1.5 px-2.5 rounded-xl font-semibold flex items-center justify-center space-x-1 transition-all text-[11px] sm:text-xs ${
                 activeTab === 'student'
                   ? 'bg-white text-[#24389C] shadow-xs'
                   : 'text-[#57657A] hover:text-[#1A1B22]'
               }`}
             >
-              <GraduationCap className="w-3.5 h-3.5" />
+              <GraduationCap className="w-3.5 h-3.5 shrink-0" />
               <span>Students ({supabaseStudents.length})</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('admin')}
+              className={`flex-1 py-1.5 px-2.5 rounded-xl font-semibold flex items-center justify-center space-x-1 transition-all text-[11px] sm:text-xs ${
+                activeTab === 'admin'
+                  ? 'bg-white text-[#24389C] shadow-xs'
+                  : 'text-[#57657A] hover:text-[#1A1B22]'
+              }`}
+            >
+              <UserCheck className="w-3.5 h-3.5 shrink-0" />
+              <span>Admin ({supabaseAdmins.length})</span>
             </button>
           </div>
 
@@ -267,7 +282,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
                 ))
               ) : (
                 <div className="text-center py-4 text-xs text-[#57657A] bg-[#FAF9FD] rounded-2xl border border-dashed border-[#E3E1EA]">
-                  No HOD records found in Supabase <code className="text-[#24389C]">hods</code> table.
+                  No HOD records found.
                 </div>
               )
             )}
@@ -306,7 +321,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
                 ))
               ) : (
                 <div className="text-center py-4 text-xs text-[#57657A] bg-[#FAF9FD] rounded-2xl border border-dashed border-[#E3E1EA]">
-                  No Mentor records found in Supabase <code className="text-[#24389C]">mentors</code> table.
+                  No Mentor records found.
                 </div>
               )
             )}
@@ -345,7 +360,46 @@ export const LoginPage: React.FC<LoginPageProps> = ({
                 ))
               ) : (
                 <div className="text-center py-4 text-xs text-[#57657A] bg-[#FAF9FD] rounded-2xl border border-dashed border-[#E3E1EA]">
-                  No Student records found in Supabase <code className="text-[#24389C]">students</code> table.
+                  No Student records found.
+                </div>
+              )
+            )}
+
+            {activeTab === 'admin' && (
+              supabaseAdmins.length > 0 ? (
+                supabaseAdmins.map((a) => (
+                  <button
+                    key={a.id || a.email}
+                    type="button"
+                    onClick={() => handleSelectSampleLogin(a)}
+                    className="w-full text-left p-2.5 rounded-2xl border border-[#E3E1EA] hover:border-[#24389C] hover:bg-[#F6F4FD] transition-all flex items-center justify-between group"
+                  >
+                    <div className="flex items-center space-x-2.5 min-w-0">
+                      <div className="w-7 h-7 rounded-xl bg-[#1E293B] text-white flex items-center justify-center font-bold text-xs shrink-0">
+                        {a.name.charAt(0)}
+                      </div>
+                      <div className="truncate">
+                        <div className="font-semibold text-xs text-[#1A1B22] group-hover:text-[#24389C] truncate">
+                          {a.name}
+                        </div>
+                        <div className="text-[10px] text-[#57657A] font-mono truncate">
+                          {a.email}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-1.5 shrink-0">
+                      <span className="text-[10px] font-bold px-2 py-0.5 bg-[#E2E8F0] text-[#1E293B] rounded-full">
+                        Super Admin
+                      </span>
+                      <span className="text-[10px] text-[#24389C] font-semibold opacity-0 group-hover:opacity-100 transition-opacity">
+                        Use →
+                      </span>
+                    </div>
+                  </button>
+                ))
+              ) : (
+                <div className="text-center py-4 text-xs text-[#57657A] bg-[#FAF9FD] rounded-2xl border border-dashed border-[#E3E1EA]">
+                  No Admin records found.
                 </div>
               )
             )}

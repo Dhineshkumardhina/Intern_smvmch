@@ -295,6 +295,73 @@ class ProductionSupabaseAuthService implements IAuthService {
   private getLocalDemoProfile(emailOrId: string): AuthUser | null {
     const q = emailOrId.trim().toLowerCase();
 
+    // Check Platform Admins
+    if (q === 'superadmin@smvec.ac.in' || q === 'admin@smvec.ac.in' || q === 'superadmin' || q === 'admin') {
+      return {
+        id: 'ADMIN_PLATFORM_01',
+        name: 'SMVEC Platform Administrator',
+        email: 'superadmin@smvec.ac.in',
+        role: 'platform_super_admin',
+        dept: 'Central Institutional Administration',
+        departmentCode: 'ADMIN',
+        college: COLLEGE_NAME,
+        isActive: true,
+        setupComplete: true,
+      };
+    }
+
+    // Check generic HOD shortcut
+    if (q === 'hod@smvec.ac.in' || q === 'hod') {
+      return {
+        id: 'HOD_SMVEC',
+        name: 'Dr. K. Premkumar',
+        email: 'hod@smvec.ac.in',
+        role: 'hod',
+        dept: 'CSEBS Department',
+        departmentCode: 'CSEBS',
+        college: COLLEGE_NAME,
+        phone: '+91 94432 11000',
+        isActive: true,
+        setupComplete: true,
+      };
+    }
+
+    // Check generic Mentor shortcut
+    if (q === 'mentor@smvec.ac.in' || q === 'mentor') {
+      return {
+        id: 'MENTOR_CSEBS_02',
+        mentorId: 'MENTOR_CSEBS_02',
+        name: 'Prof. V. Anand',
+        email: 'mentor@smvec.ac.in',
+        role: 'mentor',
+        dept: 'CSEBS Department',
+        departmentCode: 'CSEBS',
+        college: COLLEGE_NAME,
+        isActive: true,
+        setupComplete: true,
+      };
+    }
+
+    // Check generic Student shortcut
+    if (q === 'student@smvec.ac.in' || q === 'student') {
+      return {
+        id: '23CSEBS001',
+        studentId: '23CSEBS001',
+        mentorId: 'MENTOR_CSEBS_01',
+        name: 'Dhinesh Kumar R',
+        email: 'student@smvec.ac.in',
+        role: 'student',
+        dept: 'CSEBS Department',
+        departmentCode: 'CSEBS',
+        year: '3rd Year',
+        college: COLLEGE_NAME,
+        company: 'Zoho Corporation',
+        internshipRole: 'Software Engineer Intern',
+        isActive: true,
+        setupComplete: true,
+      };
+    }
+
     // Check HODs
     const hod = DEFAULT_HODS.find(h =>
       h.email.toLowerCase() === q ||
@@ -470,14 +537,19 @@ class ProductionSupabaseAuthService implements IAuthService {
     const isFetchFailure = authError && (
       authError.message === 'Failed to fetch' ||
       authError.message?.toLowerCase().includes('failed to fetch') ||
+      authError.message?.toLowerCase().includes('fetch failed') ||
       authError.message?.toLowerCase().includes('network') ||
+      authError.message?.toLowerCase().includes('enotfound') ||
+      authError.message?.toLowerCase().includes('getaddrinfo') ||
       authError.status === 0
     );
 
     if (isFetchFailure && isDemoAccountAccessPermitted()) {
       const demoUser = this.getLocalDemoProfile(emailOrId) || this.getLocalDemoProfile(targetEmail);
       if (demoUser) {
-        if (password === 'password123' || password === 'correctPassword123') {
+        // Accept password123, any case-insensitive demo password, or passwords >= 6 chars in offline dev mode
+        const pLower = password.toLowerCase();
+        if (password === 'password123' || pLower.includes('demo') || pLower.includes('password') || password.length >= 6) {
           this.currentUser = demoUser;
           if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
             localStorage.setItem('internpulse_dev_session', JSON.stringify(demoUser));
