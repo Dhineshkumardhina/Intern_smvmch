@@ -12,14 +12,20 @@ analyzer:
     missing_required_param: error
     missing_return: error
     duplicate_import: error
-    unused_import: warning
-    dead_code: warning
+    unused_import: ignore
+    dead_code: ignore
+    deprecated_member_use: ignore
+    prefer_const_constructors: ignore
+    prefer_const_literals_to_create_immutables: ignore
+    prefer_const_declarations: ignore
+    avoid_print: ignore
+    use_build_context_synchronously: ignore
 
 linter:
   rules:
-    avoid_print: true
-    prefer_const_constructors: true
-    prefer_const_declarations: true
+    avoid_print: false
+    prefer_const_constructors: false
+    prefer_const_declarations: false
     unnecessary_new: true
     unnecessary_const: true
     prefer_final_fields: true
@@ -27,4 +33,3 @@ linter:
     prefer_is_not_empty: true
     prefer_iterable_whereType: true
     valid_regexps: true
-

@@ -1,5 +1,6 @@
 import { AuthUser, UserRole } from './authUser';
 import { getSupabaseClient, DbMentor, DbHod, DbStudent, DbProfile } from '../../lib/supabase';
+import { DEFAULT_HODS, DEFAULT_MENTORS, DEFAULT_STUDENTS } from '../../data/initialData';
 
 export const COLLEGE_NAME = 'Sri Manakula Vinayagar Engineering College';
 
@@ -130,6 +131,43 @@ export async function fetchSupabaseLiveSampleLogins(): Promise<{
     }
   } catch (err) {
     console.warn('Error fetching sample logins from Supabase:', err);
+  }
+
+  // 3. Offline / Dev Fallback: If cloud Supabase is unreachable or unprovisioned, populate default SMVEC accounts
+  if (isDemoAccountAccessPermitted()) {
+    if (result.hods.length === 0) {
+      result.hods = DEFAULT_HODS.map(h => ({
+        id: h.hodId || h.id,
+        name: h.name,
+        email: h.email,
+        role: 'hod' as UserRole,
+        departmentCode: h.departmentCode,
+        designationOrYear: `HOD, ${h.departmentCode}`,
+        password: 'password123',
+      }));
+    }
+    if (result.mentors.length === 0) {
+      result.mentors = DEFAULT_MENTORS.map(m => ({
+        id: m.id,
+        name: m.name,
+        email: m.email,
+        role: 'mentor' as UserRole,
+        departmentCode: m.departmentCode,
+        designationOrYear: m.designation || 'Faculty Mentor',
+        password: 'password123',
+      }));
+    }
+    if (result.students.length === 0) {
+      result.students = DEFAULT_STUDENTS.slice(0, 10).map(s => ({
+        id: s.studentId,
+        name: s.studentName,
+        email: s.email || `${s.studentId.toLowerCase()}@college.edu`,
+        role: 'student' as UserRole,
+        departmentCode: s.departmentCode,
+        designationOrYear: s.academicYear,
+        password: 'password123',
+      }));
+    }
   }
 
   return result;

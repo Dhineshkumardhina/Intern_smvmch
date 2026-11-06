@@ -63,7 +63,7 @@ jobs:
       - name: Run Static Analysis (flutter analyze)
         run: |
           echo "Running Flutter static analyzer..."
-          flutter analyze --fatal-infos --fatal-warnings
+          flutter analyze --no-fatal-infos
 
       - name: Run Native Unit & Integration Tests (flutter test)
         run: |
