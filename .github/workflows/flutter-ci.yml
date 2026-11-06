@@ -80,7 +80,7 @@ jobs:
           echo '```' >> $GITHUB_STEP_SUMMARY
           cat test_output.txt >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
-          if grep -q "Some tests failed" test_output.txt; then
+          if grep -q "Some tests failed" test_output.txt || grep -q "Compilation failed" test_output.txt; then
             echo "::error::Flutter tests failed!"
             tail -n 35 test_output.txt | while IFS= read -r line; do
               echo "::error::$line"
@@ -126,7 +126,11 @@ jobs:
       - name: Scaffold missing platform wrappers if absent
         run: |
           if [ ! -f "android/gradlew" ]; then
-            flutter create . --platforms=android
+            flutter create . --platforms=android || true
+          fi
+          if [ ! -f "android/gradlew" ]; then
+            cd android && gradle wrapper || true
+            cd ..
           fi
           chmod +x android/gradlew || true
 

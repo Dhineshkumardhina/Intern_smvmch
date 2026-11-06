@@ -160,87 +160,121 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
         </div>
       </div>
 
-      {/* Department Navigation Bar */}
-      <nav 
-        className="bg-white rounded-2xl border border-slate-200/80 shadow-xs px-4 py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
-        aria-label="Department Views Navigation"
-      >
-        <div className="flex items-center space-x-1.5 overflow-x-auto">
-          <button
-            type="button"
-            onClick={() => setHodActiveTab('directory')}
-            className={`px-4 py-2 text-xs font-medium rounded-xl transition-all flex items-center space-x-2 shrink-0 ${
-              hodActiveTab === 'directory'
-                ? 'bg-blue-600 text-white font-semibold shadow-xs'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
-          >
-            <Users className={`w-4 h-4 ${hodActiveTab === 'directory' ? 'text-white' : 'text-blue-600'}`} />
-            <span>Student & Mentor Directory</span>
-          </button>
+      {/* 2-Column Responsive Dashboard Layout: Left Vertical Navigation Sidebar + Right Main Workspace */}
+      <div className="flex flex-col lg:flex-row gap-6 items-start">
+        {/* Left Column: Vertical Navigation Bar */}
+        <aside 
+          className="w-full lg:w-64 xl:w-72 shrink-0 bg-white rounded-2xl border border-slate-200/80 shadow-xs p-3.5 space-y-4 lg:sticky lg:top-24"
+          aria-label="Department Navigation"
+        >
+          <div className="px-3 pt-1">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Department Views</p>
+          </div>
 
-          <button
-            type="button"
-            onClick={() => setHodActiveTab('locations')}
-            className={`px-4 py-2 text-xs font-medium rounded-xl transition-all flex items-center space-x-2 shrink-0 ${
-              hodActiveTab === 'locations'
-                ? 'bg-blue-600 text-white font-semibold shadow-xs'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
-          >
-            <MapPin className={`w-4 h-4 ${hodActiveTab === 'locations' ? 'text-white' : 'text-indigo-600'}`} />
-            <span>Internship Locations & Geofences</span>
-            <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ml-1 ${
-              hodActiveTab === 'locations'
-                ? 'bg-white/20 text-white'
-                : 'bg-slate-100 text-slate-700'
-            }`}>
-              {locationRepository.getLocations().length} Sites
-            </span>
-          </button>
+          <nav className="space-y-1.5" aria-label="Department Views Navigation">
+            {/* 1. Student & Mentor Directory */}
+            <button
+              type="button"
+              onClick={() => setHodActiveTab('directory')}
+              className={`w-full px-3.5 py-3 text-xs font-medium rounded-xl transition-all flex items-center justify-between text-left group ${
+                hodActiveTab === 'directory'
+                  ? 'bg-blue-600 text-white font-semibold shadow-xs'
+                  : 'text-slate-700 hover:text-slate-900 hover:bg-slate-100/80'
+              }`}
+            >
+              <div className="flex items-center space-x-2.5 truncate">
+                <Users className={`w-4 h-4 shrink-0 ${hodActiveTab === 'directory' ? 'text-white' : 'text-blue-600'}`} />
+                <span className="truncate">Student & Mentor Directory</span>
+              </div>
+              {hodActiveTab === 'directory' && (
+                <span className="w-1.5 h-1.5 rounded-full bg-white shrink-0"></span>
+              )}
+            </button>
 
-          <button
-            type="button"
-            onClick={() => setHodActiveTab('batches')}
-            className={`px-4 py-2 text-xs font-medium rounded-xl transition-all flex items-center space-x-2 shrink-0 ${
-              hodActiveTab === 'batches'
-                ? 'bg-blue-600 text-white font-semibold shadow-xs'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
-          >
-            <Layers className={`w-4 h-4 ${hodActiveTab === 'batches' ? 'text-white' : 'text-emerald-600'}`} />
-            <span>Batches & Cohorts</span>
-            <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ml-1 ${
-              hodActiveTab === 'batches'
-                ? 'bg-white/20 text-white'
-                : 'bg-slate-100 text-slate-700'
-            }`}>
-              {batches.length}
-            </span>
-          </button>
+            {/* 2. Internship Locations & Geofences */}
+            <button
+              type="button"
+              onClick={() => setHodActiveTab('locations')}
+              className={`w-full px-3.5 py-3 text-xs font-medium rounded-xl transition-all flex items-center justify-between text-left group ${
+                hodActiveTab === 'locations'
+                  ? 'bg-blue-600 text-white font-semibold shadow-xs'
+                  : 'text-slate-700 hover:text-slate-900 hover:bg-slate-100/80'
+              }`}
+            >
+              <div className="flex items-center space-x-2.5 truncate">
+                <MapPin className={`w-4 h-4 shrink-0 ${hodActiveTab === 'locations' ? 'text-white' : 'text-indigo-600'}`} />
+                <span className="truncate">Locations & Geofences</span>
+              </div>
+              <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold shrink-0 ml-1.5 ${
+                hodActiveTab === 'locations'
+                  ? 'bg-white/20 text-white'
+                  : 'bg-slate-100 text-slate-700'
+              }`}>
+                {locationRepository.getLocations().length} Sites
+              </span>
+            </button>
 
-          <button
-            type="button"
-            onClick={() => setHodActiveTab('reports')}
-            className={`px-4 py-2 text-xs font-medium rounded-xl transition-all flex items-center space-x-2 shrink-0 ${
-              hodActiveTab === 'reports'
-                ? 'bg-blue-600 text-white font-semibold shadow-xs'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
-          >
-            <FileSpreadsheet className={`w-4 h-4 ${hodActiveTab === 'reports' ? 'text-white' : 'text-amber-600'}`} />
-            <span>Department Analytics</span>
-          </button>
-        </div>
+            {/* 3. Batches & Cohorts */}
+            <button
+              type="button"
+              onClick={() => setHodActiveTab('batches')}
+              className={`w-full px-3.5 py-3 text-xs font-medium rounded-xl transition-all flex items-center justify-between text-left group ${
+                hodActiveTab === 'batches'
+                  ? 'bg-blue-600 text-white font-semibold shadow-xs'
+                  : 'text-slate-700 hover:text-slate-900 hover:bg-slate-100/80'
+              }`}
+            >
+              <div className="flex items-center space-x-2.5 truncate">
+                <Layers className={`w-4 h-4 shrink-0 ${hodActiveTab === 'batches' ? 'text-white' : 'text-emerald-600'}`} />
+                <span className="truncate">Batches & Cohorts</span>
+              </div>
+              <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold shrink-0 ml-1.5 ${
+                hodActiveTab === 'batches'
+                  ? 'bg-white/20 text-white'
+                  : 'bg-slate-100 text-slate-700'
+              }`}>
+                {batches.length}
+              </span>
+            </button>
 
-        {/* Navigation Bar Status Summary */}
-        <div className="hidden lg:flex items-center space-x-2 text-xs text-slate-500 pr-2 shrink-0">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-          <span className="font-medium text-slate-700">{departmentCode} Division</span>
-          <span className="text-slate-300">•</span>
-          <span>{departmentStudents.length} Students</span>
-        </div>
-      </nav>
+            {/* 4. Department Analytics */}
+            <button
+              type="button"
+              onClick={() => setHodActiveTab('reports')}
+              className={`w-full px-3.5 py-3 text-xs font-medium rounded-xl transition-all flex items-center justify-between text-left group ${
+                hodActiveTab === 'reports'
+                  ? 'bg-blue-600 text-white font-semibold shadow-xs'
+                  : 'text-slate-700 hover:text-slate-900 hover:bg-slate-100/80'
+              }`}
+            >
+              <div className="flex items-center space-x-2.5 truncate">
+                <FileSpreadsheet className={`w-4 h-4 shrink-0 ${hodActiveTab === 'reports' ? 'text-white' : 'text-amber-600'}`} />
+                <span className="truncate">Department Analytics</span>
+              </div>
+              {hodActiveTab === 'reports' && (
+                <span className="w-1.5 h-1.5 rounded-full bg-white shrink-0"></span>
+              )}
+            </button>
+          </nav>
+
+          {/* Division Status Summary Card */}
+          <div className="pt-3 border-t border-slate-100">
+            <div className="p-3 bg-slate-50/80 rounded-xl border border-slate-200/60">
+              <div className="flex items-center space-x-2 text-xs">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
+                <span className="font-semibold text-slate-800 truncate">{departmentCode} Division</span>
+              </div>
+              <div className="text-[11px] text-slate-500 mt-1 pl-4 flex items-center space-x-1">
+                <span>{departmentStudents.length} Students</span>
+                <span>•</span>
+                <span>Active</span>
+              </div>
+            </div>
+          </div>
+        </aside>
+
+        {/* Right Column: Tab View Contents */}
+        <main className="flex-1 min-w-0 space-y-6">
 
       {/* RENDER LOCATION MANAGEMENT VIEW WHEN ACTIVE */}
       {hodActiveTab === 'locations' && (
@@ -741,6 +775,8 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
           </div>
         </>
       )}
+        </main>
+      </div>
 
       {isImportModalOpen && (
         <StudentBulkImportModal
