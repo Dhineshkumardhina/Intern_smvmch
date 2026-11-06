@@ -82,6 +82,9 @@ jobs:
           echo '```' >> $GITHUB_STEP_SUMMARY
           if grep -q "Some tests failed" test_output.txt; then
             echo "::error::Flutter tests failed!"
+            grep -B 2 -A 5 -E "(FAIL|Expected:)" test_output.txt | head -n 30 | while IFS= read -r line; do
+              echo "::error::$line"
+            done
             exit 1
           fi
 
