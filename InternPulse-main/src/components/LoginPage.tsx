@@ -148,7 +148,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-[#FBF8FF] flex flex-col justify-center items-center px-4 py-8 selection:bg-[#DEE0FF]">
+    <div className="min-h-screen bg-slate-50 flex flex-col justify-center items-center px-4 py-10 selection:bg-blue-100 selection:text-blue-900">
       <div className="max-w-xl w-full">
         
         {/* Institutional Branding */}
@@ -163,30 +163,30 @@ export const LoginPage: React.FC<LoginPageProps> = ({
               onClick={() => setIsLogoModalOpen(true)}
               className="mx-auto"
             />
-            <p className="text-xs text-[#57657A] font-medium mt-2">
-              Sri Manakula Vinayagar Engineering College (SMVEC)
+            <p className="text-xs text-slate-500 font-medium mt-2">
+              Sri Manakula Vinayagar Engineering College (Autonomous)
             </p>
           </div>
-          <div className="inline-flex items-center space-x-1.5 px-3 py-1 mt-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-semibold">
-            <Database className="w-3.5 h-3.5 text-emerald-600" />
-            <span>Supabase Database & Auth Live</span>
+          <div className="inline-flex items-center space-x-1.5 px-3 py-1 mt-1 rounded-full bg-white border border-slate-200 text-slate-700 text-xs font-medium shadow-2xs">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span>Institutional Verification Portal</span>
           </div>
         </div>
 
-        {/* Live Supabase Sample Logins Card */}
-        <div className="bg-white rounded-3xl p-5 border border-[#E3E1EA] shadow-md mb-5">
-          <div className="flex items-center justify-between pb-3 border-b border-[#E3E1EA]">
+        {/* Quick Access Demo Profiles Card */}
+        <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs mb-5">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
             <div className="flex items-center space-x-2">
-              <Sparkles className="w-4 h-4 text-[#24389C]" />
-              <h3 className="font-bold text-xs text-[#1A1B22] uppercase tracking-wider">
-                Supabase Sample Logins
+              <Users className="w-4 h-4 text-blue-600" />
+              <h3 className="font-semibold text-xs text-slate-800 uppercase tracking-wider">
+                Quick Access Demo Profiles
               </h3>
             </div>
             <div className="flex items-center space-x-1">
               <button
                 onClick={loadSupabaseSampleLogins}
                 title="Reload accounts from Supabase tables"
-                className="p-1 rounded-lg text-[#57657A] hover:bg-[#EFEDF6] transition-colors text-xs flex items-center space-x-1"
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-colors text-xs flex items-center space-x-1"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${loadingSupabaseAccounts ? 'animate-spin' : ''}`} />
                 <span className="text-[11px] hidden sm:inline">Refresh</span>
@@ -194,60 +194,60 @@ export const LoginPage: React.FC<LoginPageProps> = ({
             </div>
           </div>
 
-          <p className="text-[11px] text-[#57657A] mt-2 mb-3">
-            Click any account below to autofill its email & password directly from your Supabase <code className="bg-[#EFEDF6] px-1 py-0.5 rounded text-[#24389C]">hods</code> and <code className="bg-[#EFEDF6] px-1 py-0.5 rounded text-[#24389C]">mentors</code> tables:
+          <p className="text-xs text-slate-500 mt-2.5 mb-3">
+            Click any profile below to autofill credentials for testing role-specific features:
           </p>
 
           {/* Role Tabs */}
-          <div className="flex space-x-1 p-1 bg-[#F4F2FA] rounded-2xl mb-3 text-xs overflow-x-auto">
+          <div className="grid grid-cols-4 gap-1 p-1 bg-slate-100/80 rounded-xl mb-3 text-xs">
             <button
               onClick={() => setActiveTab('hod')}
-              className={`flex-1 py-1.5 px-2.5 rounded-xl font-semibold flex items-center justify-center space-x-1 transition-all text-[11px] sm:text-xs ${
+              className={`py-1.5 px-2 rounded-lg font-medium flex items-center justify-center space-x-1 transition-all text-xs ${
                 activeTab === 'hod'
-                  ? 'bg-white text-[#24389C] shadow-xs'
-                  : 'text-[#57657A] hover:text-[#1A1B22]'
+                  ? 'bg-white text-slate-900 shadow-xs'
+                  : 'text-slate-500 hover:text-slate-800'
               }`}
             >
-              <Shield className="w-3.5 h-3.5 shrink-0" />
+              <Shield className="w-3.5 h-3.5 shrink-0 text-blue-600" />
               <span>HOD ({supabaseHods.length})</span>
             </button>
             <button
               onClick={() => setActiveTab('mentor')}
-              className={`flex-1 py-1.5 px-2.5 rounded-xl font-semibold flex items-center justify-center space-x-1 transition-all text-[11px] sm:text-xs ${
+              className={`py-1.5 px-2 rounded-lg font-medium flex items-center justify-center space-x-1 transition-all text-xs ${
                 activeTab === 'mentor'
-                  ? 'bg-white text-[#24389C] shadow-xs'
-                  : 'text-[#57657A] hover:text-[#1A1B22]'
+                  ? 'bg-white text-slate-900 shadow-xs'
+                  : 'text-slate-500 hover:text-slate-800'
               }`}
             >
-              <Users className="w-3.5 h-3.5 shrink-0" />
+              <Users className="w-3.5 h-3.5 shrink-0 text-emerald-600" />
               <span>Mentors ({supabaseMentors.length})</span>
             </button>
             <button
               onClick={() => setActiveTab('student')}
-              className={`flex-1 py-1.5 px-2.5 rounded-xl font-semibold flex items-center justify-center space-x-1 transition-all text-[11px] sm:text-xs ${
+              className={`py-1.5 px-2 rounded-lg font-medium flex items-center justify-center space-x-1 transition-all text-xs ${
                 activeTab === 'student'
-                  ? 'bg-white text-[#24389C] shadow-xs'
-                  : 'text-[#57657A] hover:text-[#1A1B22]'
+                  ? 'bg-white text-slate-900 shadow-xs'
+                  : 'text-slate-500 hover:text-slate-800'
               }`}
             >
-              <GraduationCap className="w-3.5 h-3.5 shrink-0" />
+              <GraduationCap className="w-3.5 h-3.5 shrink-0 text-indigo-600" />
               <span>Students ({supabaseStudents.length})</span>
             </button>
             <button
               onClick={() => setActiveTab('admin')}
-              className={`flex-1 py-1.5 px-2.5 rounded-xl font-semibold flex items-center justify-center space-x-1 transition-all text-[11px] sm:text-xs ${
+              className={`py-1.5 px-2 rounded-lg font-medium flex items-center justify-center space-x-1 transition-all text-xs ${
                 activeTab === 'admin'
-                  ? 'bg-white text-[#24389C] shadow-xs'
-                  : 'text-[#57657A] hover:text-[#1A1B22]'
+                  ? 'bg-white text-slate-900 shadow-xs'
+                  : 'text-slate-500 hover:text-slate-800'
               }`}
             >
-              <UserCheck className="w-3.5 h-3.5 shrink-0" />
+              <UserCheck className="w-3.5 h-3.5 shrink-0 text-purple-600" />
               <span>Admin ({supabaseAdmins.length})</span>
             </button>
           </div>
 
           {/* Accounts Grid */}
-          <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+          <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
             {activeTab === 'hod' && (
               supabaseHods.length > 0 ? (
                 supabaseHods.map((h) => (
@@ -255,34 +255,34 @@ export const LoginPage: React.FC<LoginPageProps> = ({
                     key={h.id || h.email}
                     type="button"
                     onClick={() => handleSelectSampleLogin(h)}
-                    className="w-full text-left p-2.5 rounded-2xl border border-[#E3E1EA] hover:border-[#24389C] hover:bg-[#F6F4FD] transition-all flex items-center justify-between group"
+                    className="w-full text-left p-2.5 rounded-xl border border-slate-200/90 bg-white hover:border-blue-500 hover:bg-blue-50/30 transition-all flex items-center justify-between group"
                   >
                     <div className="flex items-center space-x-2.5 min-w-0">
-                      <div className="w-7 h-7 rounded-xl bg-[#24389C] text-white flex items-center justify-center font-bold text-xs shrink-0">
+                      <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-700 border border-blue-100 flex items-center justify-center font-bold text-xs shrink-0">
                         {h.name.charAt(0)}
                       </div>
                       <div className="truncate">
-                        <div className="font-semibold text-xs text-[#1A1B22] group-hover:text-[#24389C] truncate">
+                        <div className="font-semibold text-xs text-slate-800 group-hover:text-blue-700 truncate">
                           {h.name}
                         </div>
-                        <div className="text-[10px] text-[#57657A] font-mono truncate">
+                        <div className="text-[11px] text-slate-400 font-mono truncate">
                           {h.email}
                         </div>
                       </div>
                     </div>
                     <div className="flex items-center space-x-1.5 shrink-0">
-                      <span className="text-[10px] font-bold px-2 py-0.5 bg-[#DEE0FF] text-[#00105C] rounded-full">
+                      <span className="text-[11px] font-medium px-2 py-0.5 bg-slate-100 text-slate-700 rounded-md">
                         {h.departmentCode} HOD
                       </span>
-                      <span className="text-[10px] text-[#24389C] font-semibold opacity-0 group-hover:opacity-100 transition-opacity">
+                      <span className="text-[11px] text-blue-600 font-medium opacity-0 group-hover:opacity-100 transition-opacity">
                         Use →
                       </span>
                     </div>
                   </button>
                 ))
               ) : (
-                <div className="text-center py-4 text-xs text-[#57657A] bg-[#FAF9FD] rounded-2xl border border-dashed border-[#E3E1EA]">
-                  No HOD records found.
+                <div className="text-center py-4 text-xs text-slate-400 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                  No HOD records available.
                 </div>
               )
             )}
@@ -294,34 +294,34 @@ export const LoginPage: React.FC<LoginPageProps> = ({
                     key={m.id || m.email}
                     type="button"
                     onClick={() => handleSelectSampleLogin(m)}
-                    className="w-full text-left p-2.5 rounded-2xl border border-[#E3E1EA] hover:border-[#24389C] hover:bg-[#F6F4FD] transition-all flex items-center justify-between group"
+                    className="w-full text-left p-2.5 rounded-xl border border-slate-200/90 bg-white hover:border-emerald-500 hover:bg-emerald-50/30 transition-all flex items-center justify-between group"
                   >
                     <div className="flex items-center space-x-2.5 min-w-0">
-                      <div className="w-7 h-7 rounded-xl bg-[#00574B] text-white flex items-center justify-center font-bold text-xs shrink-0">
+                      <div className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-100 flex items-center justify-center font-bold text-xs shrink-0">
                         {m.name.charAt(0)}
                       </div>
                       <div className="truncate">
-                        <div className="font-semibold text-xs text-[#1A1B22] group-hover:text-[#24389C] truncate">
+                        <div className="font-semibold text-xs text-slate-800 group-hover:text-emerald-700 truncate">
                           {m.name}
                         </div>
-                        <div className="text-[10px] text-[#57657A] font-mono truncate">
+                        <div className="text-[11px] text-slate-400 font-mono truncate">
                           {m.email}
                         </div>
                       </div>
                     </div>
                     <div className="flex items-center space-x-1.5 shrink-0">
-                      <span className="text-[10px] font-bold px-2 py-0.5 bg-[#B2EBF2] text-[#004D40] rounded-full">
+                      <span className="text-[11px] font-medium px-2 py-0.5 bg-slate-100 text-slate-700 rounded-md">
                         {m.departmentCode} Mentor
                       </span>
-                      <span className="text-[10px] text-[#24389C] font-semibold opacity-0 group-hover:opacity-100 transition-opacity">
+                      <span className="text-[11px] text-emerald-600 font-medium opacity-0 group-hover:opacity-100 transition-opacity">
                         Use →
                       </span>
                     </div>
                   </button>
                 ))
               ) : (
-                <div className="text-center py-4 text-xs text-[#57657A] bg-[#FAF9FD] rounded-2xl border border-dashed border-[#E3E1EA]">
-                  No Mentor records found.
+                <div className="text-center py-4 text-xs text-slate-400 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                  No Mentor records available.
                 </div>
               )
             )}
@@ -333,34 +333,34 @@ export const LoginPage: React.FC<LoginPageProps> = ({
                     key={s.id || s.email}
                     type="button"
                     onClick={() => handleSelectSampleLogin(s)}
-                    className="w-full text-left p-2.5 rounded-2xl border border-[#E3E1EA] hover:border-[#24389C] hover:bg-[#F6F4FD] transition-all flex items-center justify-between group"
+                    className="w-full text-left p-2.5 rounded-xl border border-slate-200/90 bg-white hover:border-indigo-500 hover:bg-indigo-50/30 transition-all flex items-center justify-between group"
                   >
                     <div className="flex items-center space-x-2.5 min-w-0">
-                      <div className="w-7 h-7 rounded-xl bg-[#7C3AED] text-white flex items-center justify-center font-bold text-xs shrink-0">
+                      <div className="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-100 flex items-center justify-center font-bold text-xs shrink-0">
                         {s.name.charAt(0)}
                       </div>
                       <div className="truncate">
-                        <div className="font-semibold text-xs text-[#1A1B22] group-hover:text-[#24389C] truncate">
+                        <div className="font-semibold text-xs text-slate-800 group-hover:text-indigo-700 truncate">
                           {s.name}
                         </div>
-                        <div className="text-[10px] text-[#57657A] font-mono truncate">
+                        <div className="text-[11px] text-slate-400 font-mono truncate">
                           {s.email} ({s.id})
                         </div>
                       </div>
                     </div>
                     <div className="flex items-center space-x-1.5 shrink-0">
-                      <span className="text-[10px] font-bold px-2 py-0.5 bg-[#EDE9FE] text-[#5B21B6] rounded-full">
+                      <span className="text-[11px] font-medium px-2 py-0.5 bg-slate-100 text-slate-700 rounded-md">
                         {s.departmentCode}
                       </span>
-                      <span className="text-[10px] text-[#24389C] font-semibold opacity-0 group-hover:opacity-100 transition-opacity">
+                      <span className="text-[11px] text-indigo-600 font-medium opacity-0 group-hover:opacity-100 transition-opacity">
                         Use →
                       </span>
                     </div>
                   </button>
                 ))
               ) : (
-                <div className="text-center py-4 text-xs text-[#57657A] bg-[#FAF9FD] rounded-2xl border border-dashed border-[#E3E1EA]">
-                  No Student records found.
+                <div className="text-center py-4 text-xs text-slate-400 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                  No Student records available.
                 </div>
               )
             )}
@@ -372,34 +372,34 @@ export const LoginPage: React.FC<LoginPageProps> = ({
                     key={a.id || a.email}
                     type="button"
                     onClick={() => handleSelectSampleLogin(a)}
-                    className="w-full text-left p-2.5 rounded-2xl border border-[#E3E1EA] hover:border-[#24389C] hover:bg-[#F6F4FD] transition-all flex items-center justify-between group"
+                    className="w-full text-left p-2.5 rounded-xl border border-slate-200/90 bg-white hover:border-purple-500 hover:bg-purple-50/30 transition-all flex items-center justify-between group"
                   >
                     <div className="flex items-center space-x-2.5 min-w-0">
-                      <div className="w-7 h-7 rounded-xl bg-[#1E293B] text-white flex items-center justify-center font-bold text-xs shrink-0">
+                      <div className="w-7 h-7 rounded-lg bg-purple-50 text-purple-700 border border-purple-100 flex items-center justify-center font-bold text-xs shrink-0">
                         {a.name.charAt(0)}
                       </div>
                       <div className="truncate">
-                        <div className="font-semibold text-xs text-[#1A1B22] group-hover:text-[#24389C] truncate">
+                        <div className="font-semibold text-xs text-slate-800 group-hover:text-purple-700 truncate">
                           {a.name}
                         </div>
-                        <div className="text-[10px] text-[#57657A] font-mono truncate">
+                        <div className="text-[11px] text-slate-400 font-mono truncate">
                           {a.email}
                         </div>
                       </div>
                     </div>
                     <div className="flex items-center space-x-1.5 shrink-0">
-                      <span className="text-[10px] font-bold px-2 py-0.5 bg-[#E2E8F0] text-[#1E293B] rounded-full">
-                        Super Admin
+                      <span className="text-[11px] font-medium px-2 py-0.5 bg-slate-100 text-slate-700 rounded-md">
+                        Deanery Admin
                       </span>
-                      <span className="text-[10px] text-[#24389C] font-semibold opacity-0 group-hover:opacity-100 transition-opacity">
+                      <span className="text-[11px] text-purple-600 font-medium opacity-0 group-hover:opacity-100 transition-opacity">
                         Use →
                       </span>
                     </div>
                   </button>
                 ))
               ) : (
-                <div className="text-center py-4 text-xs text-[#57657A] bg-[#FAF9FD] rounded-2xl border border-dashed border-[#E3E1EA]">
-                  No Admin records found.
+                <div className="text-center py-4 text-xs text-slate-400 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                  No Admin records available.
                 </div>
               )
             )}
@@ -407,16 +407,16 @@ export const LoginPage: React.FC<LoginPageProps> = ({
         </div>
 
         {/* Login Card */}
-        <div className="bg-white rounded-3xl p-7 sm:p-8 border border-[#E3E1EA] shadow-xl">
-          <div className="mb-5 border-b border-[#E3E1EA] pb-4">
-            <h2 className="text-xl font-bold text-[#1A1B22]">Sign In</h2>
-            <p className="text-xs text-[#57657A] mt-0.5">
-              Enter your credentials or click a Supabase account above
+        <div className="bg-white rounded-2xl p-7 sm:p-8 border border-slate-200/80 shadow-xs">
+          <div className="mb-6 pb-4 border-b border-slate-100">
+            <h2 className="text-xl font-semibold text-slate-900">Sign in to InternPulse</h2>
+            <p className="text-xs text-slate-500 mt-1">
+              Enter your credentials or select a demo profile above.
             </p>
           </div>
 
           {error && (
-            <div className="mb-5 p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center space-x-2.5">
+            <div className="mb-5 p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center space-x-2.5">
               <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
               <span>{error}</span>
             </div>
@@ -425,17 +425,17 @@ export const LoginPage: React.FC<LoginPageProps> = ({
           <form onSubmit={handleSubmit} className="space-y-4 text-xs">
             {/* Email / User ID */}
             <div>
-              <label className="block font-semibold text-[#1A1B22] mb-1.5">
-                Email Address or ID <span className="text-rose-500">*</span>
+              <label className="block font-medium text-slate-700 mb-1.5">
+                Email Address or Registration ID <span className="text-rose-500">*</span>
               </label>
               <div className="relative">
-                <Mail className="w-4 h-4 text-[#757684] absolute left-3.5 top-3" />
+                <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
                 <input
                   type="text"
                   value={emailOrId}
                   onChange={(e) => setEmailOrId(e.target.value)}
                   placeholder="e.g. user@college.edu or 23CSEBS001"
-                  className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-[#E3E1EA] focus:outline-none focus:border-[#24389C] text-xs bg-[#FBF8FF]"
+                  className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 text-xs text-slate-900 placeholder:text-slate-400"
                   required
                 />
               </div>
@@ -444,31 +444,31 @@ export const LoginPage: React.FC<LoginPageProps> = ({
             {/* Password */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label className="font-semibold text-[#1A1B22]">
+                <label className="font-medium text-slate-700">
                   Password <span className="text-rose-500">*</span>
                 </label>
                 <button
                   type="button"
                   onClick={onOpenForgotPassword}
-                  className="text-xs font-semibold text-[#24389C] hover:underline"
+                  className="text-xs font-medium text-blue-600 hover:text-blue-700"
                 >
                   Forgot Password?
                 </button>
               </div>
               <div className="relative">
-                <Lock className="w-4 h-4 text-[#757684] absolute left-3.5 top-3" />
+                <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter your password"
-                  className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-[#E3E1EA] focus:outline-none focus:border-[#24389C] text-xs bg-[#FBF8FF]"
+                  className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 text-xs text-slate-900 placeholder:text-slate-400"
                   required
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3.5 top-3 text-[#757684] hover:text-[#1A1B22]"
+                  className="absolute right-3.5 top-3 text-slate-400 hover:text-slate-600"
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -480,10 +480,10 @@ export const LoginPage: React.FC<LoginPageProps> = ({
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full py-3 px-4 bg-[#24389C] hover:bg-[#1E2E80] text-white font-bold rounded-2xl transition-all shadow-md flex items-center justify-center space-x-2 text-sm disabled:opacity-60"
+                className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl transition-all shadow-xs flex items-center justify-center space-x-2 text-sm disabled:opacity-60"
               >
                 {isLoading ? (
-                  <span>Authenticating via Supabase...</span>
+                  <span>Signing in...</span>
                 ) : (
                   <>
                     <span>Sign In</span>
@@ -495,28 +495,28 @@ export const LoginPage: React.FC<LoginPageProps> = ({
           </form>
 
           {/* Quick Actions: Register Student & Create Supabase Account */}
-          <div className="mt-6 pt-5 border-t border-[#E3E1EA] space-y-3">
+          <div className="mt-6 pt-5 border-t border-slate-100 space-y-3">
             <div className="text-center">
-              <p className="text-xs text-[#57657A]">
+              <p className="text-xs text-slate-500">
                 New Student?{' '}
                 <button
                   type="button"
                   onClick={onNavigateToRegister}
-                  className="font-bold text-[#24389C] hover:underline"
+                  className="font-medium text-blue-600 hover:text-blue-700 hover:underline"
                 >
                   Register Account
                 </button>
               </p>
             </div>
 
-            <div className="pt-2 text-center">
+            <div className="pt-1 text-center">
               <button
                 type="button"
                 onClick={() => setShowProvisionModal(true)}
-                className="inline-flex items-center space-x-1.5 text-xs text-[#57657A] hover:text-[#24389C] bg-[#F4F2FA] hover:bg-[#ECE8F6] px-3 py-1.5 rounded-xl border border-[#E3E1EA] transition-all font-medium"
+                className="inline-flex items-center space-x-1.5 text-xs text-slate-500 hover:text-slate-800 bg-slate-50 hover:bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200 transition-all font-medium"
               >
-                <KeyRound className="w-3.5 h-3.5 text-[#24389C]" />
-                <span>Create New User in Supabase Auth</span>
+                <KeyRound className="w-3.5 h-3.5 text-slate-400" />
+                <span>Create New Account</span>
               </button>
             </div>
           </div>
@@ -524,54 +524,54 @@ export const LoginPage: React.FC<LoginPageProps> = ({
 
         {/* Modal to create custom faculty/HOD in Supabase Auth */}
         {showProvisionModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
-            <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-[#E3E1EA] animate-in fade-in zoom-in duration-200">
-              <div className="flex items-center justify-between pb-3 border-b border-[#E3E1EA]">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
+            <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                 <div className="flex items-center space-x-2">
-                  <div className="w-8 h-8 rounded-xl bg-[#24389C] text-white flex items-center justify-center">
+                  <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-700 border border-blue-100 flex items-center justify-center">
                     <UserPlus className="w-4 h-4" />
                   </div>
-                  <h3 className="font-bold text-base text-[#1A1B22]">Create User in Supabase Auth</h3>
+                  <h3 className="font-semibold text-base text-slate-900">Create New Account</h3>
                 </div>
                 <button
                   onClick={() => setShowProvisionModal(false)}
-                  className="p-1 rounded-lg text-[#757684] hover:bg-[#EFEDF6]"
+                  className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100"
                 >
                   ✕
                 </button>
               </div>
 
               {provSuccess && (
-                <div className="mt-4 p-3 bg-emerald-50 border border-emerald-200 rounded-2xl text-emerald-900 text-xs flex items-center space-x-2">
+                <div className="mt-4 p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-900 text-xs flex items-center space-x-2">
                   <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                   <span>{provSuccess}</span>
                 </div>
               )}
 
-              <form onSubmit={handleCreateSupabaseAccount} className="space-y-3 mt-4 text-xs">
-                <p className="text-[#57657A]">
-                  This creates an official account directly inside your Supabase project (`auth.users`).
+              <form onSubmit={handleCreateSupabaseAccount} className="space-y-3.5 mt-4 text-xs">
+                <p className="text-slate-500">
+                  Provision an official profile directly into the SMVEC authentication registry.
                 </p>
 
                 <div>
-                  <label className="block font-semibold text-[#1A1B22] mb-1">Full Name</label>
+                  <label className="block font-medium text-slate-700 mb-1">Full Name</label>
                   <input
                     type="text"
                     value={provName}
                     onChange={(e) => setProvName(e.target.value)}
                     placeholder="e.g. Dr. S. Ramesh"
-                    className="w-full p-2.5 rounded-xl border border-[#E3E1EA] text-xs bg-[#FBF8FF]"
+                    className="w-full p-2.5 rounded-xl border border-slate-200 text-xs bg-white text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-600"
                     required
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 gap-2.5">
                   <div>
-                    <label className="block font-semibold text-[#1A1B22] mb-1">Role</label>
+                    <label className="block font-medium text-slate-700 mb-1">Role</label>
                     <select
                       value={provRole}
                       onChange={(e) => setProvRole(e.target.value as UserRole)}
-                      className="w-full p-2.5 rounded-xl border border-[#E3E1EA] text-xs bg-[#FBF8FF]"
+                      className="w-full p-2.5 rounded-xl border border-slate-200 text-xs bg-white text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-600"
                     >
                       <option value="hod">HOD</option>
                       <option value="mentor">Faculty Mentor</option>
@@ -580,11 +580,11 @@ export const LoginPage: React.FC<LoginPageProps> = ({
                     </select>
                   </div>
                   <div>
-                    <label className="block font-semibold text-[#1A1B22] mb-1">Department</label>
+                    <label className="block font-medium text-slate-700 mb-1">Department</label>
                     <select
                       value={provDept}
                       onChange={(e) => setProvDept(e.target.value)}
-                      className="w-full p-2.5 rounded-xl border border-[#E3E1EA] text-xs bg-[#FBF8FF]"
+                      className="w-full p-2.5 rounded-xl border border-slate-200 text-xs bg-white text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-600"
                     >
                       <option value="CSEBS">CSEBS</option>
                       <option value="IT">IT</option>
@@ -596,25 +596,25 @@ export const LoginPage: React.FC<LoginPageProps> = ({
                 </div>
 
                 <div>
-                  <label className="block font-semibold text-[#1A1B22] mb-1">Email</label>
+                  <label className="block font-medium text-slate-700 mb-1">Email</label>
                   <input
                     type="email"
                     value={provEmail}
                     onChange={(e) => setProvEmail(e.target.value)}
                     placeholder="hod.csebs@college.edu"
-                    className="w-full p-2.5 rounded-xl border border-[#E3E1EA] text-xs bg-[#FBF8FF]"
+                    className="w-full p-2.5 rounded-xl border border-slate-200 text-xs bg-white text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-600"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block font-semibold text-[#1A1B22] mb-1">Password</label>
+                  <label className="block font-medium text-slate-700 mb-1">Password</label>
                   <input
                     type="password"
                     value={provPassword}
                     onChange={(e) => setProvPassword(e.target.value)}
                     placeholder="Min 6 characters"
-                    className="w-full p-2.5 rounded-xl border border-[#E3E1EA] text-xs bg-[#FBF8FF]"
+                    className="w-full p-2.5 rounded-xl border border-slate-200 text-xs bg-white text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-600"
                     required
                   />
                 </div>
@@ -623,16 +623,16 @@ export const LoginPage: React.FC<LoginPageProps> = ({
                   <button
                     type="button"
                     onClick={() => setShowProvisionModal(false)}
-                    className="px-4 py-2 rounded-xl text-xs font-semibold text-[#57657A] hover:bg-[#EFEDF6]"
+                    className="px-4 py-2 rounded-xl text-xs font-medium text-slate-600 hover:bg-slate-100"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={provLoading}
-                    className="px-4 py-2 rounded-xl text-xs font-semibold bg-[#24389C] text-white hover:bg-[#1E2E80] disabled:opacity-60 flex items-center space-x-1.5"
+                    className="px-4 py-2 rounded-xl text-xs font-medium bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60 flex items-center space-x-1.5"
                   >
-                    {provLoading ? <span>Creating...</span> : <span>Create in Supabase</span>}
+                    {provLoading ? <span>Creating...</span> : <span>Create Account</span>}
                   </button>
                 </div>
               </form>

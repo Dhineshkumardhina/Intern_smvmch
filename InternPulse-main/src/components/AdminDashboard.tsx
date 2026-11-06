@@ -148,41 +148,41 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     <div className="space-y-6">
       
       {/* Admin Top Navigation & Institutional Badge */}
-      <div className="bg-white rounded-2xl p-4 border border-[#E3E1EA] shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center space-x-3">
-          <div className="w-11 h-11 rounded-xl bg-[#24389C] text-white flex items-center justify-center font-bold shadow-sm">
-            <ShieldCheck className="w-6 h-6" />
+      <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-center space-x-3.5">
+          <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-700 border border-blue-100 flex items-center justify-center font-bold shadow-2xs">
+            <ShieldCheck className="w-5 h-5" />
           </div>
           <div>
             <div className="flex items-center space-x-2">
-              <h2 className="text-lg font-bold text-[#1A1B22]">Institutional Administration Console</h2>
-              <span className="text-[10px] font-bold bg-[#DEE0FF] text-[#00105C] px-2 py-0.5 rounded-full uppercase">
+              <h2 className="text-base font-semibold text-slate-900">Institutional Administration Console</h2>
+              <span className="text-[11px] font-medium bg-slate-100 text-slate-700 px-2 py-0.5 rounded-full">
                 Deanery Level
               </span>
             </div>
-            <p className="text-xs text-[#57657A]">
+            <p className="text-xs text-slate-500 mt-0.5">
               SMVEC Academic & Placement Cell • Overall Governance & Mentorship Oversight
             </p>
           </div>
         </div>
 
         {/* Tab Controls */}
-        <div className="flex items-center space-x-1.5 bg-[#EFEDF6] p-1 rounded-xl overflow-x-auto">
+        <div className="flex items-center space-x-1 bg-slate-100 p-1 rounded-xl overflow-x-auto text-xs">
           {[
-            { key: 'overview', label: '📊 Overview' },
-            { key: 'students', label: `🎓 Students (${students.length})` },
-            { key: 'mentors', label: `👨‍🏫 Mentors (${dynamicMentors.length})` },
-            { key: 'departments', label: '🏛️ Departments (9)' },
-            { key: 'companies', label: `🏢 Companies (${dynamicCompanies.length})` },
-            { key: 'reports', label: '📑 Reports' },
+            { key: 'overview', label: 'Overview' },
+            { key: 'students', label: `Students (${students.length})` },
+            { key: 'mentors', label: `Mentors (${dynamicMentors.length})` },
+            { key: 'departments', label: 'Departments (9)' },
+            { key: 'companies', label: `Companies (${dynamicCompanies.length})` },
+            { key: 'reports', label: 'Reports' },
           ].map((tab) => (
             <button
               key={tab.key}
               onClick={() => setAdminTab(tab.key as any)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${
                 adminTab === tab.key
-                  ? 'bg-white text-[#24389C] shadow-sm font-bold'
-                  : 'text-[#57657A] hover:text-[#1A1B22]'
+                  ? 'bg-white text-slate-900 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               {tab.label}
@@ -196,59 +196,59 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         <div className="space-y-6">
           {/* Institutional KPI Cards */}
           <div className="grid grid-cols-2 sm:grid-cols-6 gap-3">
-            <div className="bg-white p-4 rounded-xl border border-[#E3E1EA] shadow-sm">
-              <div className="text-[11px] font-semibold text-[#57657A]">Total Students</div>
-              <div className="text-2xl font-bold text-[#1A1B22] mt-1">{students.length}</div>
-              <div className="text-[10px] text-[#57657A] mt-1">9 Departments</div>
+            <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
+              <div className="text-xs font-medium text-slate-500">Total Students</div>
+              <div className="text-2xl font-semibold text-slate-900 mt-1">{students.length}</div>
+              <div className="text-[11px] text-slate-400 mt-0.5">9 Departments</div>
             </div>
 
-            <div className="bg-white p-4 rounded-xl border border-[#E3E1EA] shadow-sm">
-              <div className="text-[11px] font-semibold text-[#57657A]">Faculty Mentors</div>
-              <div className="text-2xl font-bold text-[#24389C] mt-1">{dynamicMentors.length}</div>
-              <div className="text-[10px] text-emerald-600 mt-1">Guides Assigned</div>
+            <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
+              <div className="text-xs font-medium text-slate-500">Faculty Mentors</div>
+              <div className="text-2xl font-semibold text-blue-600 mt-1">{dynamicMentors.length}</div>
+              <div className="text-[11px] text-slate-400 mt-0.5">Guides Assigned</div>
             </div>
 
-            <div className="bg-white p-4 rounded-xl border border-[#E3E1EA] shadow-sm">
-              <div className="text-[11px] font-semibold text-emerald-700">On Track / Active</div>
-              <div className="text-2xl font-bold text-emerald-800 mt-1">
+            <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
+              <div className="text-xs font-medium text-emerald-700">On Track / Active</div>
+              <div className="text-2xl font-semibold text-emerald-800 mt-1">
                 {students.filter((s) => s.status === 'onTrack' || s.status === 'inProgress').length}
               </div>
-              <div className="text-[10px] text-emerald-600 mt-1">Normal Pace</div>
+              <div className="text-[11px] text-emerald-600 mt-0.5">Normal Pace</div>
             </div>
 
-            <div className="bg-white p-4 rounded-xl border border-[#E3E1EA] shadow-sm">
-              <div className="text-[11px] font-semibold text-teal-700">Completed</div>
-              <div className="text-2xl font-bold text-teal-800 mt-1">
+            <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
+              <div className="text-xs font-medium text-teal-700">Completed</div>
+              <div className="text-2xl font-semibold text-teal-800 mt-1">
                 {students.filter((s) => s.status === 'completed').length}
               </div>
-              <div className="text-[10px] text-teal-600 mt-1">Certified Interns</div>
+              <div className="text-[11px] text-teal-600 mt-0.5">Certified Interns</div>
             </div>
 
-            <div className="bg-rose-50 p-4 rounded-xl border border-rose-200 shadow-sm">
-              <div className="text-[11px] font-semibold text-rose-800">Blocked / At-Risk</div>
-              <div className="text-2xl font-bold text-rose-900 mt-1">
+            <div className="bg-rose-50/50 p-4 rounded-xl border border-rose-200/80 shadow-2xs">
+              <div className="text-xs font-medium text-rose-800">Needs Attention</div>
+              <div className="text-2xl font-semibold text-rose-900 mt-1">
                 {students.filter((s) => s.status === 'blocked').length}
               </div>
-              <div className="text-[10px] text-rose-700 font-bold mt-1">Needs Dean Action</div>
+              <div className="text-[11px] text-rose-700 font-medium mt-0.5">Action Required</div>
             </div>
 
-            <div className="bg-white p-4 rounded-xl border border-[#E3E1EA] shadow-sm">
-              <div className="text-[11px] font-semibold text-slate-600">Host Companies</div>
-              <div className="text-2xl font-bold text-slate-800 mt-1">{dynamicCompanies.length}</div>
-              <div className="text-[10px] text-slate-500 mt-1">MoU Partners</div>
+            <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
+              <div className="text-xs font-medium text-slate-500">Host Companies</div>
+              <div className="text-2xl font-semibold text-slate-900 mt-1">{dynamicCompanies.length}</div>
+              <div className="text-[11px] text-slate-400 mt-0.5">Industry Partners</div>
             </div>
           </div>
 
           {/* Quick Actions & Department Matrix */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 bg-white rounded-2xl p-6 border border-[#E3E1EA] shadow-sm">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-bold text-sm uppercase tracking-wider text-[#57657A]">
-                  Departmental Compliance & Progress Matrix
+            <div className="lg:col-span-2 bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs">
+              <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+                <h3 className="font-semibold text-xs uppercase tracking-wider text-slate-500">
+                  Department Progress Matrix
                 </h3>
-                <span className="text-xs text-[#24389C] font-semibold">9 Active SMVEC Branches</span>
+                <span className="text-xs text-blue-600 font-medium">9 Active SMVEC Branches</span>
               </div>
-              <div className="space-y-3">
+              <div className="space-y-2.5">
                 {DEPARTMENTS.map((dept) => {
                   const deptStudents = students.filter(
                     (s) => s.dept.toUpperCase() === dept.code.toUpperCase()
@@ -267,26 +267,26 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   return (
                     <div
                       key={dept.code}
-                      className="p-3 rounded-xl border border-[#E3E1EA] bg-[#FBF8FF] flex items-center justify-between text-xs hover:border-[#24389C] transition-all"
+                      className="p-3 rounded-xl border border-slate-200/80 bg-white flex items-center justify-between text-xs hover:border-slate-300 transition-all"
                     >
                       <div className="w-1/3">
-                        <span className="font-bold text-[#1A1B22]">{dept.code}</span>
-                        <p className="text-[11px] text-[#57657A] truncate">{dept.name}</p>
+                        <span className="font-semibold text-slate-900">{dept.code}</span>
+                        <p className="text-[11px] text-slate-500 truncate">{dept.name}</p>
                       </div>
                       <div className="text-center w-1/4">
-                        <span className="font-bold text-[#1A1B22]">{deptStudents.length} Interns</span>
-                        <div className="text-[10px] text-emerald-700">
-                          {activeCount} Active • {blockedCount > 0 && <span className="text-rose-600 font-bold">{blockedCount} Blocked</span>}
+                        <span className="font-medium text-slate-800">{deptStudents.length} Interns</span>
+                        <div className="text-[11px] text-emerald-700">
+                          {activeCount} Active {blockedCount > 0 && <span className="text-rose-600 font-medium">• {blockedCount} Delayed</span>}
                         </div>
                       </div>
                       <div className="w-1/3 flex items-center space-x-2">
-                        <div className="w-full bg-[#EFEDF6] h-2 rounded-full overflow-hidden">
+                        <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
                           <div
-                            className="bg-[#24389C] h-full rounded-full"
+                            className="bg-blue-600 h-full rounded-full"
                             style={{ width: `${avgProgress}%` }}
                           ></div>
                         </div>
-                        <span className="font-bold text-[#1A1B22] shrink-0">{avgProgress}%</span>
+                        <span className="font-semibold text-slate-700 shrink-0 w-8 text-right">{avgProgress}%</span>
                       </div>
                     </div>
                   );
@@ -295,51 +295,51 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             </div>
 
             {/* Admin Controls Panel */}
-            <div className="bg-white rounded-2xl p-6 border border-[#E3E1EA] shadow-sm space-y-4">
-              <h3 className="font-bold text-sm uppercase tracking-wider text-[#57657A]">
-                Administrative Shortcuts
+            <div className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs space-y-3.5">
+              <h3 className="font-semibold text-xs uppercase tracking-wider text-slate-500 mb-2">
+                Administrative Actions
               </h3>
 
               <button
                 onClick={() => setIsImportModalOpen(true)}
-                className="w-full p-3 rounded-xl border border-[#24389C] bg-[#DEE0FF]/30 hover:bg-[#DEE0FF]/60 text-[#00105C] text-xs font-bold flex items-center justify-between transition-all shadow-xs"
+                className="w-full p-3 rounded-xl border border-blue-200 bg-blue-50/70 hover:bg-blue-100/70 text-blue-900 text-xs font-medium flex items-center justify-between transition-all"
               >
                 <div className="flex items-center space-x-2">
-                  <Upload className="w-4 h-4 text-[#24389C]" />
+                  <Upload className="w-4 h-4 text-blue-600" />
                   <span>Bulk Onboard Students (CSV / XLSX)</span>
                 </div>
-                <span className="text-[#24389C] text-[11px] font-bold">Import</span>
+                <span className="text-blue-700 text-xs font-semibold">Import</span>
               </button>
 
               <button
                 onClick={handleExportCsv}
-                className="w-full p-3 rounded-xl border border-[#E3E1EA] hover:border-[#24389C] text-[#1A1B22] text-xs font-semibold flex items-center justify-between transition-all bg-[#FBF8FF]"
+                className="w-full p-3 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-800 text-xs font-medium flex items-center justify-between transition-all"
               >
                 <div className="flex items-center space-x-2">
-                  <Download className="w-4 h-4 text-[#57657A]" />
-                  <span>Export Complete Institutional CSV</span>
+                  <Download className="w-4 h-4 text-slate-500" />
+                  <span>Export Institutional CSV</span>
                 </div>
-                <span className="text-[#57657A] text-[11px]">.csv</span>
+                <span className="text-slate-400 text-xs">.csv</span>
               </button>
 
               <button
                 onClick={() => setIsExportModalOpen(true)}
-                className="w-full p-3 rounded-xl border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 text-xs font-bold flex items-center justify-between transition-all shadow-xs"
+                className="w-full p-3 rounded-xl border border-emerald-200 bg-emerald-50/70 hover:bg-emerald-100/70 text-emerald-900 text-xs font-medium flex items-center justify-between transition-all"
               >
                 <div className="flex items-center space-x-2">
                   <FileSpreadsheet className="w-4 h-4 text-emerald-700" />
-                  <span>Institutional Analytics Exporter</span>
+                  <span>Institutional Reports</span>
                 </div>
-                <span className="text-emerald-700 text-[10px] font-bold px-2 py-0.5 bg-emerald-200/60 rounded-md uppercase">PDF • XLSX • CSV</span>
+                <span className="text-emerald-700 text-[10px] font-semibold px-2 py-0.5 bg-emerald-200/60 rounded-md uppercase">PDF • XLSX</span>
               </button>
 
-              <div className="p-4 bg-indigo-50 border border-indigo-100 rounded-xl space-y-2">
-                <div className="flex items-center space-x-2 text-indigo-900 font-bold text-xs">
-                  <ShieldCheck className="w-4 h-4 text-indigo-600" />
-                  <span>Role Separation Governance</span>
+              <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-xl space-y-1.5 mt-2">
+                <div className="flex items-center space-x-2 text-slate-800 font-medium text-xs">
+                  <ShieldCheck className="w-4 h-4 text-blue-600" />
+                  <span>Administrative Role Authority</span>
                 </div>
-                <p className="text-[11px] text-indigo-800 leading-relaxed">
-                  As System Admin, you possess supervisory rights across all SMVEC departments, faculty guide allocations, and verified student daily log records.
+                <p className="text-[11px] text-slate-500 leading-relaxed">
+                  Supervisory access across all SMVEC departments, faculty guide allocations, and verified attendance records.
                 </p>
               </div>
             </div>
@@ -392,15 +392,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             <div className="flex items-center space-x-2">
               <button
                 onClick={() => setIsImportModalOpen(true)}
-                className="px-3.5 py-2 rounded-xl bg-white border border-[#E3E1EA] text-[#24389C] text-xs font-semibold flex items-center space-x-1.5 hover:bg-[#DEE0FF]/40 shadow-xs transition-all"
+                className="px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 text-xs font-medium flex items-center space-x-1.5 hover:bg-slate-50 shadow-xs transition-all"
               >
-                <Upload className="w-3.5 h-3.5" />
-                <span>Bulk Import (CSV / XLSX)</span>
+                <Upload className="w-3.5 h-3.5 text-blue-600" />
+                <span>Bulk Import</span>
               </button>
 
               <button
                 onClick={handleExportCsv}
-                className="px-3.5 py-2 rounded-xl bg-[#24389C] text-white text-xs font-semibold flex items-center space-x-1.5 hover:bg-[#1E2E80]"
+                className="px-3.5 py-2 rounded-xl bg-blue-600 text-white text-xs font-medium flex items-center space-x-1.5 hover:bg-blue-700 shadow-xs transition-all"
               >
                 <Download className="w-3.5 h-3.5" />
                 <span>Export Filtered ({filteredStudents.length})</span>
@@ -408,49 +408,53 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl border border-[#E3E1EA] shadow-sm overflow-x-auto">
+          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-[#EFEDF6] text-[#57657A] border-b border-[#E3E1EA]">
+              <thead className="bg-slate-50 text-slate-500 border-b border-slate-200">
                 <tr>
-                  <th className="p-3.5 font-semibold">Student ID</th>
-                  <th className="p-3.5 font-bold text-emerald-800 bg-emerald-50/60">Student Name 🎓</th>
-                  <th className="p-3.5 font-semibold">Dept & Year</th>
-                  <th className="p-3.5 font-bold text-indigo-800 bg-indigo-50/60">Faculty Mentor 👨‍🏫</th>
-                  <th className="p-3.5 font-semibold">Host Company</th>
-                  <th className="p-3.5 font-semibold">Progress</th>
-                  <th className="p-3.5 font-semibold">Status</th>
-                  <th className="p-3.5 font-semibold text-right">Actions</th>
+                  <th className="p-3.5 font-medium">Student ID</th>
+                  <th className="p-3.5 font-medium">Student Name</th>
+                  <th className="p-3.5 font-medium">Dept & Year</th>
+                  <th className="p-3.5 font-medium">Faculty Mentor</th>
+                  <th className="p-3.5 font-medium">Host Company</th>
+                  <th className="p-3.5 font-medium">Progress</th>
+                  <th className="p-3.5 font-medium">Status</th>
+                  <th className="p-3.5 font-medium text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#E3E1EA]">
+              <tbody className="divide-y divide-slate-100">
                 {filteredStudents.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="p-8 text-center text-xs text-[#57657A]">
+                    <td colSpan={8} className="p-8 text-center text-xs text-slate-400">
                       No student records found in registry.
                     </td>
                   </tr>
                 ) : (
                   filteredStudents.map((st) => (
-                    <tr key={st.id} className="hover:bg-[#FBF8FF]">
-                      <td className="p-3.5 font-bold font-mono text-[#1A1B22]">{st.studentId}</td>
-                      <td className="p-3.5 font-bold text-[#1A1B22] bg-emerald-50/20">{st.studentName}</td>
-                      <td className="p-3.5 text-[#57657A]">{st.dept} ({st.year})</td>
-                      <td className="p-3.5 font-medium text-indigo-900 bg-indigo-50/20">{st.mentor}</td>
-                      <td className="p-3.5 text-[#57657A] font-medium">{st.company}</td>
+                    <tr key={st.id} className="hover:bg-slate-50/70 transition-colors">
+                      <td className="p-3.5 font-medium font-mono text-slate-800">{st.studentId}</td>
+                      <td className="p-3.5 font-medium text-slate-900">{st.studentName}</td>
+                      <td className="p-3.5 text-slate-500">{st.dept} • {st.year}</td>
+                      <td className="p-3.5 text-slate-700">{st.mentor}</td>
+                      <td className="p-3.5 text-slate-500">{st.company}</td>
                       <td className="p-3.5">
                         <div className="flex items-center space-x-2">
-                          <span className="font-semibold">{st.progress}%</span>
-                          <div className="w-16 bg-[#EFEDF6] h-1.5 rounded-full overflow-hidden">
+                          <span className="font-medium text-slate-700">{st.progress}%</span>
+                          <div className="w-16 bg-slate-100 h-1.5 rounded-full overflow-hidden">
                             <div
-                              className={`h-full ${st.status === 'blocked' ? 'bg-rose-600' : 'bg-[#24389C]'}`}
+                              className={`h-full ${st.status === 'blocked' ? 'bg-rose-500' : 'bg-blue-600'}`}
                               style={{ width: `${st.progress}%` }}
                             ></div>
                           </div>
                         </div>
                       </td>
                       <td className="p-3.5">
-                        <span className={`px-2 py-0.5 rounded-full font-semibold ${st.status === 'blocked' ? 'bg-rose-100 text-rose-800' : 'bg-emerald-100 text-emerald-800'}`}>
-                          {st.status}
+                        <span className={`px-2 py-0.5 rounded-md text-[11px] font-medium ${
+                          st.status === 'blocked' 
+                            ? 'bg-rose-50 text-rose-700 border border-rose-200' 
+                            : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                        }`}>
+                          {st.status === 'onTrack' ? 'On Track' : st.status}
                         </span>
                       </td>
                       <td className="p-3.5 text-right">
@@ -459,7 +463,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             setSelectedStudentForMentor(st);
                             setNewMentorName(st.mentor);
                           }}
-                          className="text-xs font-semibold text-[#24389C] hover:underline px-2 py-1 rounded bg-[#DEE0FF]/40"
+                          className="text-xs font-medium text-blue-600 hover:text-blue-800 px-2.5 py-1 rounded-lg bg-blue-50/70 hover:bg-blue-100/70 transition-colors"
                         >
                           Re-assign Guide
                         </button>
@@ -477,29 +481,29 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       {adminTab === 'mentors' && (
         <div>
           {dynamicMentors.length === 0 ? (
-            <div className="bg-white p-10 rounded-2xl border border-[#E3E1EA] text-center space-y-2">
-              <Users className="w-8 h-8 text-[#757684] mx-auto opacity-50" />
-              <div className="text-sm font-semibold text-[#1A1B22]">No Faculty Mentors with active mentees yet.</div>
-              <p className="text-xs text-[#57657A]">
+            <div className="bg-white p-10 rounded-2xl border border-slate-200/80 text-center space-y-2">
+              <Users className="w-8 h-8 text-slate-400 mx-auto" />
+              <div className="text-sm font-semibold text-slate-800">No Faculty Mentors with active mentees yet.</div>
+              <p className="text-xs text-slate-500">
                 Mentors will appear here as students register and are assigned to faculty coordinators.
               </p>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {dynamicMentors.map((m) => (
-                <div key={m.name} className="bg-white p-5 rounded-2xl border border-[#E3E1EA] shadow-sm space-y-3">
+                <div key={m.name} className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-3">
                   <div className="flex items-start justify-between">
                     <div>
-                      <h4 className="font-bold text-sm text-[#1A1B22]">{m.name}</h4>
-                      <p className="text-xs text-[#57657A]">{m.dept} Faculty Coordinator</p>
+                      <h4 className="font-semibold text-sm text-slate-900">{m.name}</h4>
+                      <p className="text-xs text-slate-500">{m.dept} Faculty Coordinator</p>
                     </div>
-                    <span className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-800 flex items-center justify-center font-bold text-xs">
-                      👨‍🏫
+                    <span className="w-8 h-8 rounded-xl bg-blue-50 text-blue-700 border border-blue-100 flex items-center justify-center font-semibold text-xs">
+                      <Users className="w-4 h-4" />
                     </span>
                   </div>
-                  <div className="p-3 bg-[#FBF8FF] rounded-xl border border-[#E3E1EA] flex items-center justify-between text-xs">
-                    <span className="text-[#57657A]">Assigned Students:</span>
-                    <span className="font-bold text-[#24389C] text-sm">{m.studentsCount}</span>
+                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/70 flex items-center justify-between text-xs">
+                    <span className="text-slate-500">Assigned Students:</span>
+                    <span className="font-semibold text-slate-900 text-sm">{m.studentsCount}</span>
                   </div>
                 </div>
               ))}
@@ -512,8 +516,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       {adminTab === 'departments' && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="font-bold text-sm text-[#1A1B22]">Institutional Department Governance & Cohort Metrics</h3>
-            <span className="text-xs text-[#57657A] bg-[#EFEDF6] px-3 py-1 rounded-lg">
+            <h3 className="font-semibold text-sm text-slate-900">Department Governance & Overview</h3>
+            <span className="text-xs text-slate-600 bg-slate-100 px-3 py-1 rounded-lg">
               {multiDeptStats.length} Registered Departments
             </span>
           </div>
@@ -521,12 +525,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {multiDeptStats.map((dept) => {
               return (
-                <div key={dept.code} className="bg-white p-5 rounded-2xl border border-[#E3E1EA] shadow-sm space-y-3">
+                <div key={dept.code} className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-3">
                   <div className="flex items-start justify-between">
                     <div>
                       <div className="flex items-center space-x-2">
-                        <span className="font-bold text-lg text-[#24389C]">{dept.code}</span>
-                        <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border ${
+                        <span className="font-bold text-base text-slate-900">{dept.code}</span>
+                        <span className={`text-[10px] font-medium uppercase px-2 py-0.5 rounded-full border ${
                           dept.status === 'active' 
                             ? 'bg-emerald-50 text-emerald-800 border-emerald-200' 
                             : 'bg-slate-100 text-slate-700 border-slate-300'
@@ -534,40 +538,40 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                           {dept.status}
                         </span>
                         {dept.isPilotAuthorized && (
-                          <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-800 border border-indigo-200">
+                          <span className="text-[10px] font-medium uppercase px-2 py-0.5 rounded-full bg-blue-50 text-blue-800 border border-blue-200">
                             Pilot
                           </span>
                         )}
                       </div>
-                      <h4 className="font-semibold text-xs text-[#1A1B22] mt-0.5">{dept.name}</h4>
+                      <h4 className="font-medium text-xs text-slate-600 mt-0.5">{dept.name}</h4>
                     </div>
-                    <span className="px-2.5 py-1 rounded-lg bg-[#DEE0FF] text-[#00105C] font-bold text-xs">
+                    <span className="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-800 font-semibold text-xs">
                       {dept.totalStudents} Interns
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2 pt-2 border-t border-[#E3E1EA] text-xs">
-                    <div className="p-2 bg-[#FBF8FF] rounded-lg border border-[#E3E1EA]">
-                      <span className="text-[10px] text-[#57657A] block">Active Placements:</span>
+                  <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100 text-xs">
+                    <div className="p-2 bg-slate-50 rounded-lg border border-slate-200/60">
+                      <span className="text-[10px] text-slate-500 block">Active Placements:</span>
                       <strong className="text-emerald-700">{dept.activeInternships}</strong>
                     </div>
-                    <div className="p-2 bg-[#FBF8FF] rounded-lg border border-[#E3E1EA]">
-                      <span className="text-[10px] text-[#57657A] block">Completed:</span>
+                    <div className="p-2 bg-slate-50 rounded-lg border border-slate-200/60">
+                      <span className="text-[10px] text-slate-500 block">Completed:</span>
                       <strong className="text-teal-700">{dept.completedInternships}</strong>
                     </div>
-                    <div className="p-2 bg-[#FBF8FF] rounded-lg border border-[#E3E1EA]">
-                      <span className="text-[10px] text-[#57657A] block">At Risk / Blocked:</span>
+                    <div className="p-2 bg-slate-50 rounded-lg border border-slate-200/60">
+                      <span className="text-[10px] text-slate-500 block">At Risk / Blocked:</span>
                       <strong className="text-rose-700">{dept.atRiskInternships}</strong>
                     </div>
-                    <div className="p-2 bg-[#FBF8FF] rounded-lg border border-[#E3E1EA]">
-                      <span className="text-[10px] text-[#57657A] block">Active Batches:</span>
-                      <strong className="text-indigo-700">{dept.activeBatches}</strong>
+                    <div className="p-2 bg-slate-50 rounded-lg border border-slate-200/60">
+                      <span className="text-[10px] text-slate-500 block">Active Batches:</span>
+                      <strong className="text-blue-700">{dept.activeBatches}</strong>
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between text-xs pt-2 border-t border-[#E3E1EA] text-[#57657A]">
-                    <span>Mentors: <strong>{dept.activeMentors}</strong></span>
-                    <span>Locations: <strong>{dept.approvedLocations}</strong></span>
+                  <div className="flex items-center justify-between text-xs pt-2 border-t border-slate-100 text-slate-500">
+                    <span>Mentors: <strong className="text-slate-800">{dept.activeMentors}</strong></span>
+                    <span>Locations: <strong className="text-slate-800">{dept.approvedLocations}</strong></span>
                     <span>Attendance: <strong className="text-emerald-700">{dept.attendanceRate}%</strong></span>
                   </div>
                 </div>
@@ -581,29 +585,29 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       {adminTab === 'companies' && (
         <div>
           {dynamicCompanies.length === 0 ? (
-            <div className="bg-white p-10 rounded-2xl border border-[#E3E1EA] text-center space-y-2">
-              <Building2 className="w-8 h-8 text-[#757684] mx-auto opacity-50" />
-              <div className="text-sm font-semibold text-[#1A1B22]">No Host Companies registered yet.</div>
-              <p className="text-xs text-[#57657A]">
+            <div className="bg-white p-10 rounded-2xl border border-slate-200/80 text-center space-y-2">
+              <Building2 className="w-8 h-8 text-slate-400 mx-auto" />
+              <div className="text-sm font-semibold text-slate-800">No Host Companies registered yet.</div>
+              <p className="text-xs text-slate-500">
                 Organizations will appear as students register their internship host companies.
               </p>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {dynamicCompanies.map((comp) => (
-                <div key={comp.name} className="bg-white p-5 rounded-2xl border border-[#E3E1EA] shadow-sm space-y-3">
+                <div key={comp.name} className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-3">
                   <div className="flex items-start justify-between">
                     <div>
-                      <h4 className="font-bold text-sm text-[#1A1B22]">{comp.name}</h4>
-                      <p className="text-xs text-[#57657A]">Host Organization Partner</p>
+                      <h4 className="font-semibold text-sm text-slate-900">{comp.name}</h4>
+                      <p className="text-xs text-slate-500">Industry Partner</p>
                     </div>
-                    <span className="w-8 h-8 rounded-xl bg-[#DEE0FF] text-[#00105C] flex items-center justify-center font-bold text-xs">
-                      🏢
+                    <span className="w-8 h-8 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center font-medium text-xs">
+                      <Building2 className="w-4 h-4" />
                     </span>
                   </div>
-                  <div className="flex items-center justify-between text-xs pt-2 border-t border-[#E3E1EA]">
-                    <span className="text-[#57657A]">Intern Placements:</span>
-                    <span className="font-bold text-[#24389C]">{comp.count} Students</span>
+                  <div className="flex items-center justify-between text-xs pt-2 border-t border-slate-100">
+                    <span className="text-slate-500">Intern Placements:</span>
+                    <span className="font-semibold text-blue-600">{comp.count} Students</span>
                   </div>
                 </div>
               ))}
@@ -615,42 +619,42 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       {/* TAB 6: REPORTS */}
       {adminTab === 'reports' && (
         <div className="space-y-6">
-          <div className="bg-white rounded-2xl p-6 border border-[#E3E1EA] shadow-sm space-y-4">
+          <div className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs space-y-4">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
-                <h3 className="font-bold text-base text-[#1A1B22]">Institutional Compliance & AICTE/NAAC Reports</h3>
-                <p className="text-xs text-[#57657A]">
-                  Generate and export comprehensive audit summaries for Sri Manakula Vinayagar Engineering College accreditation bodies.
+                <h3 className="font-semibold text-base text-slate-900">Institutional Compliance & Accreditation Reports</h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Generate and export comprehensive audit summaries for Sri Manakula Vinayagar Engineering College.
                 </p>
               </div>
               <button
                 onClick={() => setIsExportModalOpen(true)}
-                className="px-4 py-2 rounded-xl bg-[#24389C] text-white text-xs font-bold hover:bg-[#1E2E80] transition shadow-xs flex items-center space-x-2 shrink-0"
+                className="px-4 py-2 rounded-xl bg-blue-600 text-white text-xs font-medium hover:bg-blue-700 transition shadow-xs flex items-center space-x-2 shrink-0"
               >
                 <Download className="w-4 h-4" />
-                <span>Launch Report Exporter (PDF • XLSX • CSV)</span>
+                <span>Launch Report Exporter</span>
               </button>
             </div>
 
             {/* Quick Export Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-              <div className="p-4 rounded-xl border border-[#E3E1EA] bg-[#FBF8FF] flex items-center justify-between">
+              <div className="p-4 rounded-xl border border-slate-200/80 bg-slate-50/70 flex items-center justify-between">
                 <div>
-                  <h4 className="font-bold text-xs text-[#1A1B22]">Full Student Internship Ledger</h4>
-                  <p className="text-[11px] text-[#57657A]">Complete roster of student IDs, mentors, and progress</p>
+                  <h4 className="font-semibold text-xs text-slate-900">Student Internship Ledger</h4>
+                  <p className="text-[11px] text-slate-500 mt-0.5">Complete roster of student IDs, mentors, and progress</p>
                 </div>
                 <button
                   onClick={handleExportCsv}
-                  className="px-3 py-1.5 rounded-lg bg-[#24389C] text-white text-xs font-semibold hover:bg-[#1E2E80]"
+                  className="px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-700 text-xs font-medium hover:bg-slate-50 transition-colors shadow-2xs"
                 >
                   Download CSV
                 </button>
               </div>
 
-              <div className="p-4 rounded-xl border border-[#E3E1EA] bg-[#FBF8FF] flex items-center justify-between">
+              <div className="p-4 rounded-xl border border-slate-200/80 bg-slate-50/70 flex items-center justify-between">
                 <div>
-                  <h4 className="font-bold text-xs text-[#1A1B22]">At-Risk Students Action Memo</h4>
-                  <p className="text-[11px] text-[#57657A]">Filtered summary of blocked & inactive student cases</p>
+                  <h4 className="font-semibold text-xs text-slate-900">At-Risk Students Memo</h4>
+                  <p className="text-[11px] text-slate-500 mt-0.5">Filtered summary of delayed & blocked student cases</p>
                 </div>
                 <button
                   onClick={() => {
@@ -664,7 +668,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     a.download = 'SMVEC_AtRisk_Students_Report.csv';
                     a.click();
                   }}
-                  className="px-3 py-1.5 rounded-lg bg-rose-600 text-white text-xs font-semibold hover:bg-rose-700"
+                  className="px-3 py-1.5 rounded-lg bg-rose-50 text-rose-700 border border-rose-200 text-xs font-medium hover:bg-rose-100 transition-colors shadow-2xs"
                 >
                   Export At-Risk
                 </button>
@@ -673,42 +677,42 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </div>
 
           {/* Verification Outcomes & Telemetry Compliance Overview */}
-          <div className="bg-white rounded-2xl p-6 border border-[#E3E1EA] shadow-sm space-y-4">
-            <div className="flex items-center justify-between">
+          <div className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div>
-                <h4 className="font-bold text-sm text-[#1A1B22] flex items-center space-x-2">
-                  <ShieldCheck className="w-4 h-4 text-[#24389C]" />
-                  <span>Workplace Geofence Verification Integrity Breakdown</span>
+                <h4 className="font-semibold text-sm text-slate-900 flex items-center space-x-2">
+                  <ShieldCheck className="w-4 h-4 text-blue-600" />
+                  <span>Workplace Geofence Verification Breakdown</span>
                 </h4>
-                <p className="text-[11px] text-[#57657A]">
-                  Canonical distinction of evaluation outcomes across all departments (Strict Non-Fabrication Standard)
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  Evaluation outcomes across all departments
                 </p>
               </div>
-              <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-full">
+              <span className="text-[11px] font-medium px-2.5 py-0.5 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-full">
                 Active Policy Enforced
               </span>
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-              <div className="p-3 bg-emerald-50/60 border border-emerald-200 rounded-xl">
-                <span className="text-[11px] font-bold text-emerald-800">Within Geofence</span>
-                <p className="text-lg font-black text-emerald-900 mt-1">100% Verified</p>
-                <span className="text-[10px] text-emerald-700">Valid GPS Workplace Session</span>
+              <div className="p-3.5 bg-emerald-50/50 border border-emerald-200/80 rounded-xl">
+                <span className="text-xs font-medium text-emerald-800">Within Geofence</span>
+                <p className="text-xl font-semibold text-emerald-900 mt-1">100%</p>
+                <span className="text-[11px] text-emerald-700">Verified Workplace Sessions</span>
               </div>
-              <div className="p-3 bg-rose-50/60 border border-rose-200 rounded-xl">
-                <span className="text-[11px] font-bold text-rose-800">Outside Geofence</span>
-                <p className="text-lg font-black text-rose-900 mt-1">Isolated</p>
-                <span className="text-[10px] text-rose-700">Confirmed Geofence Breach</span>
+              <div className="p-3.5 bg-rose-50/50 border border-rose-200/80 rounded-xl">
+                <span className="text-xs font-medium text-rose-800">Outside Geofence</span>
+                <p className="text-xl font-semibold text-rose-900 mt-1">0</p>
+                <span className="text-[11px] text-rose-700">Geofence Breaches</span>
               </div>
-              <div className="p-3 bg-amber-50/60 border border-amber-200 rounded-xl">
-                <span className="text-[11px] font-bold text-amber-800">Technical Exceptions</span>
-                <p className="text-lg font-black text-amber-900 mt-1">Classified</p>
-                <span className="text-[10px] text-amber-700">GPS / Network Unavailable</span>
+              <div className="p-3.5 bg-amber-50/50 border border-amber-200/80 rounded-xl">
+                <span className="text-xs font-medium text-amber-800">Exceptions</span>
+                <p className="text-xl font-semibold text-amber-900 mt-1">Classified</p>
+                <span className="text-[11px] text-amber-700">GPS / Offline Fallbacks</span>
               </div>
-              <div className="p-3 bg-indigo-50/60 border border-indigo-200 rounded-xl">
-                <span className="text-[11px] font-bold text-indigo-800">Scheduled Checks</span>
-                <p className="text-lg font-black text-indigo-900 mt-1">Active</p>
-                <span className="text-[10px] text-indigo-700">Randomized Windows</span>
+              <div className="p-3.5 bg-blue-50/50 border border-blue-200/80 rounded-xl">
+                <span className="text-xs font-medium text-blue-800">Scheduled Checks</span>
+                <p className="text-xl font-semibold text-blue-900 mt-1">Active</p>
+                <span className="text-[11px] text-blue-700">Verification Windows</span>
               </div>
             </div>
           </div>
@@ -717,10 +721,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
       {/* RE-ASSIGN FACULTY MENTOR MODAL */}
       {selectedStudentForMentor && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-[#E3E1EA] animate-in fade-in zoom-in duration-200">
-            <h3 className="font-bold text-base text-[#1A1B22] mb-1">Re-assign Faculty Mentor</h3>
-            <p className="text-xs text-[#57657A] mb-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
+            <h3 className="font-semibold text-base text-slate-900 mb-1">Re-assign Faculty Mentor</h3>
+            <p className="text-xs text-slate-500 mb-4">
               Update assigned faculty guide for <strong>{selectedStudentForMentor.studentName}</strong> ({selectedStudentForMentor.studentId}).
             </p>
 
@@ -733,7 +737,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
             <form onSubmit={handleAssignMentor} className="space-y-4 text-xs">
               <div>
-                <label className="block font-semibold text-[#1A1B22] mb-1.5">
+                <label className="block font-medium text-slate-700 mb-1.5">
                   Select or Enter Faculty Mentor Name
                 </label>
                 <input
@@ -741,7 +745,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   value={newMentorName}
                   onChange={(e) => setNewMentorName(e.target.value)}
                   placeholder="e.g. Dr. Ramesh K., Prof. Anitha S."
-                  className="w-full p-2.5 rounded-xl border border-[#E3E1EA] text-xs bg-[#FBF8FF]"
+                  className="w-full p-2.5 rounded-xl border border-slate-200 text-xs bg-white text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-600"
                   required
                 />
               </div>
@@ -750,13 +754,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 <button
                   type="button"
                   onClick={() => setSelectedStudentForMentor(null)}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold text-[#57657A] hover:bg-[#EFEDF6]"
+                  className="px-4 py-2 rounded-xl text-xs font-medium text-slate-600 hover:bg-slate-100"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl text-xs font-semibold bg-[#24389C] text-white hover:bg-[#1E2E80]"
+                  className="px-4 py-2 rounded-xl text-xs font-medium bg-blue-600 text-white hover:bg-blue-700"
                 >
                   Save Re-assignment
                 </button>
