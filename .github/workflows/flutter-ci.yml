@@ -63,7 +63,14 @@ jobs:
       - name: Run Static Analysis (flutter analyze)
         run: |
           echo "Running Flutter static analyzer..."
-          flutter analyze --no-fatal-infos --no-fatal-warnings
+          flutter analyze --no-fatal-infos --no-fatal-warnings 2>&1 | tee analyze.txt || true
+          echo "### Flutter Analysis Output" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          cat analyze.txt >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          if grep -q "• error •" analyze.txt; then
+            echo "::error::Flutter analyze found compile errors!"
+          fi
 
       - name: Run Native Unit & Integration Tests (flutter test)
         run: |
