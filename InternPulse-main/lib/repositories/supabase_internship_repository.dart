@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/auth/supabase_auth_service.dart';
+import '../core/constants/status_constants.dart';
 import '../core/network/network_retry.dart';
 import '../models/internship_model.dart';
 import '../models/location_model.dart';

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../models/user_role.dart';
+import '../models/internship_model.dart';
 import '../core/auth/supabase_auth_service.dart';
 
 // Authentication

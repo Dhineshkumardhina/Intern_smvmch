@@ -15,17 +15,14 @@ analyzer:
     unused_import: ignore
     dead_code: ignore
     deprecated_member_use: ignore
-    prefer_const_constructors: ignore
-    prefer_const_literals_to_create_immutables: ignore
-    prefer_const_declarations: ignore
-    avoid_print: ignore
-    use_build_context_synchronously: ignore
 
 linter:
   rules:
     avoid_print: false
     prefer_const_constructors: false
+    prefer_const_literals_to_create_immutables: false
     prefer_const_declarations: false
+    use_build_context_synchronously: false
     unnecessary_new: true
     unnecessary_const: true
     prefer_final_fields: true
