@@ -1,0 +1,14 @@
+{
+  "name": "internpulse-workspace",
+  "version": "1.0.0",
+  "private": true,
+  "description": "InternPulse - Sri Manakula Vinayagar Engineering College",
+  "workspaces": [
+    "InternPulse-main"
+  ],
+  "scripts": {
+    "dev": "npm --prefix InternPulse-main run dev",
+    "build": "npm --prefix InternPulse-main run build",
+    "test": "npm --prefix InternPulse-main run test"
+  }
+}
