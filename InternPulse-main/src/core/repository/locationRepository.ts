@@ -1,10 +1,11 @@
 import { AuthUser } from '../auth/authUser';
 import { AuthorizationPolicy, ForbiddenException } from '../auth/rbac/authorizationPolicy';
 import { getSupabaseClient } from '../../lib/supabase';
-import { StudentRecord } from '../../data/initialData';
+import { StudentRecord, LocationChangeHistoryRecord, canonicalizeInstitutionId } from '../../data/initialData';
 
 export interface LocationRecord {
   id: string;
+  institutionId?: string;
   locationName: string;
   companyName: string;
   address: string;
@@ -29,6 +30,7 @@ export interface LocationRecord {
 export const DEFAULT_LOCATIONS: LocationRecord[] = [
   {
     id: 'c0000000-0000-0000-0000-000000000001',
+    institutionId: 'a0000000-0000-0000-0000-000000000001',
     locationName: 'TCS Siruseri Innovation Hub',
     companyName: 'Tata Consultancy Services',
     address: 'SIPCOT IT Park, Siruseri, Chennai, Tamil Nadu 603103',
@@ -50,6 +52,7 @@ export const DEFAULT_LOCATIONS: LocationRecord[] = [
   },
   {
     id: 'c0000000-0000-0000-0000-000000000002',
+    institutionId: 'a0000000-0000-0000-0000-000000000001',
     locationName: 'Zoho Estancia Global Technology Center',
     companyName: 'Zoho Corporation',
     address: 'Plot A1, Estancia IT Park, Vallancheri, GST Road, Chengalpattu, Tamil Nadu 603202',
@@ -71,6 +74,7 @@ export const DEFAULT_LOCATIONS: LocationRecord[] = [
   },
   {
     id: 'c0000000-0000-0000-0000-000000000003',
+    institutionId: 'a0000000-0000-0000-0000-000000000001',
     locationName: 'L&T Technology Services Engineering Hub',
     companyName: 'L&T Technology Services',
     address: 'DLF Cybercity, Mount Poonamallee Road, Manapakkam, Chennai, Tamil Nadu 600089',
@@ -92,6 +96,7 @@ export const DEFAULT_LOCATIONS: LocationRecord[] = [
   },
   {
     id: 'c0000000-0000-0000-0000-000000000004',
+    institutionId: 'a0000000-0000-0000-0000-000000000001',
     locationName: 'Renault Nissan Technology R&D Campus',
     companyName: 'Renault Nissan Technology Business Centre',
     address: 'Mahindra World City, Chengalpattu, Tamil Nadu 603004',
@@ -102,19 +107,48 @@ export const DEFAULT_LOCATIONS: LocationRecord[] = [
     internshipEndDate: '2026-07-15',
     monitoringStartTime: '08:00:00',
     monitoringEndTime: '16:30:00',
-    departmentCode: 'MECH',
+    departmentCode: 'CSEBS',
     status: 'pending_approval',
     isActive: false,
-    createdBy: 'HOD_MECH',
+    createdBy: 'HOD_CSEBS',
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
   },
 ];
 
 const LOCATIONS_STORAGE_KEY = 'internpulse_locations_v1';
+const LOCATIONS_HISTORY_STORAGE_KEY = 'internpulse_location_history_v1';
+
+export const DEFAULT_LOCATION_HISTORY: LocationChangeHistoryRecord[] = [
+  {
+    id: 'lch-init-001',
+    locationId: 'c0000000-0000-0000-0000-000000000001',
+    locationName: 'TCS Siruseri Innovation Hub',
+    changedById: 'HOD_CSEBS',
+    changedByName: 'Dr. V. Gomathi',
+    changeType: 'approved',
+    previousState: { status: 'pending_approval' },
+    newState: { status: 'active', geofenceRadiusMeters: 200 },
+    remarks: 'Approved institutional geofence boundary after site audit.',
+    changedAt: '2026-01-02T10:00:00Z',
+  },
+  {
+    id: 'lch-init-002',
+    locationId: 'c0000000-0000-0000-0000-000000000002',
+    locationName: 'Zoho Estancia Global Technology Center',
+    changedById: 'HOD_IT',
+    changedByName: 'Dr. M. Auxilia',
+    changeType: 'approved',
+    previousState: { status: 'pending_approval' },
+    newState: { status: 'active', geofenceRadiusMeters: 250 },
+    remarks: 'Zoho technology center approved for IT cohort.',
+    changedAt: '2026-01-02T10:00:00Z',
+  },
+];
 
 class LocationRepository {
   private locations: LocationRecord[] = [];
+  private changeHistory: LocationChangeHistoryRecord[] = [];
   private listeners: Set<() => void> = new Set();
 
   constructor() {
@@ -125,6 +159,7 @@ class LocationRepository {
     try {
       if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
         this.locations = [...DEFAULT_LOCATIONS];
+        this.changeHistory = [...DEFAULT_LOCATION_HISTORY];
         return;
       }
       const raw = localStorage.getItem(LOCATIONS_STORAGE_KEY);
@@ -132,12 +167,27 @@ class LocationRepository {
         const parsed = JSON.parse(raw);
         if (Array.isArray(parsed) && parsed.length > 0) {
           this.locations = parsed;
-          return;
+        } else {
+          this.locations = [...DEFAULT_LOCATIONS];
         }
+      } else {
+        this.locations = [...DEFAULT_LOCATIONS];
       }
-      this.locations = [...DEFAULT_LOCATIONS];
+
+      const rawHistory = localStorage.getItem(LOCATIONS_HISTORY_STORAGE_KEY);
+      if (rawHistory) {
+        const parsedHistory = JSON.parse(rawHistory);
+        if (Array.isArray(parsedHistory) && parsedHistory.length > 0) {
+          this.changeHistory = parsedHistory;
+        } else {
+          this.changeHistory = [...DEFAULT_LOCATION_HISTORY];
+        }
+      } else {
+        this.changeHistory = [...DEFAULT_LOCATION_HISTORY];
+      }
     } catch {
       this.locations = [...DEFAULT_LOCATIONS];
+      this.changeHistory = [...DEFAULT_LOCATION_HISTORY];
     }
   }
 
@@ -145,6 +195,7 @@ class LocationRepository {
     try {
       if (typeof window === 'undefined' || typeof localStorage === 'undefined') return;
       localStorage.setItem(LOCATIONS_STORAGE_KEY, JSON.stringify(this.locations));
+      localStorage.setItem(LOCATIONS_HISTORY_STORAGE_KEY, JSON.stringify(this.changeHistory));
     } catch (err) {
       console.warn('Failed to persist locations to localStorage', err);
     }
@@ -167,33 +218,56 @@ class LocationRepository {
     });
   }
 
-  public getLocations(departmentCode?: string): LocationRecord[] {
+  public getLocations(departmentCode?: string, caller?: AuthUser): LocationRecord[] {
+    let list = this.locations;
+    if (caller && caller.role !== 'platform_super_admin') {
+      const callerInst = canonicalizeInstitutionId(caller.institutionId || caller.college);
+      list = list.filter(l => !l.institutionId || canonicalizeInstitutionId(l.institutionId) === callerInst);
+    }
+
     if (!departmentCode || departmentCode === 'ALL') {
-      return [...this.locations];
+      return [...list];
     }
     const cleanDept = departmentCode.trim().toUpperCase();
-    return this.locations.filter((l) => (l.departmentCode || '').toUpperCase() === cleanDept);
+    return list.filter((l) => (l.departmentCode || '').toUpperCase() === cleanDept);
   }
 
-  public getApprovedLocations(departmentCode?: string): LocationRecord[] {
-    return this.getLocations(departmentCode).filter(
+  public getApprovedLocations(departmentCode?: string, caller?: AuthUser): LocationRecord[] {
+    return this.getLocations(departmentCode, caller).filter(
       (l) => l.status === 'active' && l.isActive
     );
   }
 
-  public getLocationById(id: string): LocationRecord | null {
-    return this.locations.find((l) => l.id === id) || null;
+  public getLocationById(id: string, caller?: AuthUser): LocationRecord | null {
+    const loc = this.locations.find((l) => l.id === id) || null;
+    if (loc && caller && caller.role !== 'platform_super_admin') {
+      const callerInst = canonicalizeInstitutionId(caller.institutionId || caller.college);
+      const locInst = canonicalizeInstitutionId(loc.institutionId);
+      if (locInst && callerInst && locInst !== callerInst) {
+        throw new ForbiddenException(`Tenant Isolation Violation: Access denied to location '${loc.locationName}' belonging to another institution.`);
+      }
+    }
+    return loc;
   }
 
   /**
    * Helper: Validate HOD authority for location governance
    */
-  private assertHodAuthority(caller: AuthUser): void {
+  private assertHodAuthority(caller: AuthUser, departmentCode?: string): void {
     AuthorizationPolicy.validateIdentity(caller);
-    if (caller.role !== 'hod' && caller.role !== 'admin') {
+    if (caller.role !== 'hod' && caller.role !== 'admin' && caller.role !== 'super_admin' && caller.role !== 'platform_super_admin') {
       throw new ForbiddenException(
         `Security Violation: Only authorized HOD users can manage internship locations. Current role: '${caller.role}'`
       );
+    }
+    if (departmentCode && caller.role === 'hod') {
+      const callerDept = (caller.departmentCode || caller.dept?.split(' ')[0] || '').trim().toUpperCase();
+      const targetDept = departmentCode.trim().toUpperCase();
+      if (callerDept && callerDept !== targetDept) {
+        throw new ForbiddenException(
+          `Access denied. HOD of '${callerDept}' cannot manage internship locations for department '${targetDept}'.`
+        );
+      }
     }
   }
 
@@ -208,7 +282,8 @@ class LocationRepository {
     },
     caller: AuthUser
   ): Promise<LocationRecord> {
-    this.assertHodAuthority(caller);
+    const dept = (locationData.departmentCode || caller.departmentCode || 'CSEBS').trim().toUpperCase();
+    this.assertHodAuthority(caller, dept);
 
     // Validate coordinate ranges
     if (locationData.latitude < -90 || locationData.latitude > 90) {
@@ -228,11 +303,16 @@ class LocationRepository {
     const now = new Date().toISOString();
     const status: LocationRecord['status'] = locationData.status || 'pending_approval';
     const isActive = status === 'active';
-    const dept = locationData.departmentCode || caller.departmentCode || 'CSEBS';
+    // Server-side authoritative institution resolution: Non-platform admins cannot spoof institutionId in payload
+    const callerInst = canonicalizeInstitutionId(caller.institutionId || caller.college || 'inst-smvec-001');
+    const instId = caller.role === 'platform_super_admin'
+      ? canonicalizeInstitutionId(locationData.institutionId || callerInst)
+      : callerInst;
 
     const newRecord: LocationRecord = {
       ...locationData,
       id: newId,
+      institutionId: instId,
       departmentCode: dept,
       status: status,
       isActive: isActive,
@@ -243,6 +323,28 @@ class LocationRepository {
 
     // Optimistic local update
     this.locations.unshift(newRecord);
+
+    // Record creation history
+    const historyEntry: LocationChangeHistoryRecord = {
+      id: `lch-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      locationId: newId,
+      locationName: newRecord.locationName,
+      changedById: caller.id,
+      changedByName: caller.name,
+      changeType: 'created',
+      previousState: undefined,
+      newState: {
+        status: newRecord.status,
+        latitude: newRecord.latitude,
+        longitude: newRecord.longitude,
+        geofenceRadiusMeters: newRecord.geofenceRadiusMeters,
+        departmentCode: newRecord.departmentCode,
+      },
+      remarks: `Location created for department ${dept} by ${caller.name}`,
+      changedAt: now,
+    };
+    this.changeHistory.unshift(historyEntry);
+
     this.persistToStorage();
     this.notify();
 
@@ -267,6 +369,15 @@ class LocationRepository {
           is_active: newRecord.isActive,
           created_by: caller.id,
         });
+
+        await client.from('location_change_history').insert({
+          id: historyEntry.id,
+          location_id: newId,
+          changed_by: caller.id,
+          change_type: historyEntry.changeType,
+          new_state: historyEntry.newState,
+          remarks: historyEntry.remarks,
+        });
       } catch (err) {
         console.warn('Supabase createLocation insert warning:', err);
       }
@@ -281,14 +392,16 @@ class LocationRepository {
   public async editLocation(
     id: string,
     updates: Partial<Omit<LocationRecord, 'id' | 'createdAt'>>,
-    caller: AuthUser
+    caller: AuthUser,
+    changeRemarks?: string
   ): Promise<LocationRecord> {
-    this.assertHodAuthority(caller);
-
     const index = this.locations.findIndex((l) => l.id === id);
     if (index === -1) {
       throw new Error(`Location with id ${id} not found.`);
     }
+
+    const current = this.locations[index];
+    this.assertHodAuthority(caller, current.departmentCode);
 
     if (updates.latitude !== undefined && (updates.latitude < -90 || updates.latitude > 90)) {
       throw new Error('Latitude must be between -90 and 90 degrees.');
@@ -300,7 +413,6 @@ class LocationRepository {
       throw new Error('Geofence radius must be between 20 meters and 5000 meters.');
     }
 
-    const current = this.locations[index];
     const now = new Date().toISOString();
     const newStatus = updates.status || current.status;
     const newIsActive = updates.isActive !== undefined ? updates.isActive : (updates.status ? updates.status === 'active' : current.isActive);
@@ -315,6 +427,43 @@ class LocationRepository {
     };
 
     this.locations[index] = updatedRecord;
+
+    // Determine changeType
+    let cType: LocationChangeHistoryRecord['changeType'] = 'metadata_updated';
+    if (updates.status === 'active' && current.status !== 'active') {
+      cType = 'approved';
+    } else if (updates.status && updates.status !== current.status) {
+      cType = 'status_changed';
+    } else if (updates.geofenceRadiusMeters && updates.geofenceRadiusMeters !== current.geofenceRadiusMeters) {
+      cType = 'geofence_updated';
+    } else if ((updates.latitude && updates.latitude !== current.latitude) || (updates.longitude && updates.longitude !== current.longitude)) {
+      cType = 'coordinates_updated';
+    }
+
+    const historyEntry: LocationChangeHistoryRecord = {
+      id: `lch-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      locationId: id,
+      locationName: updatedRecord.locationName,
+      changedById: caller.id,
+      changedByName: caller.name,
+      changeType: cType,
+      previousState: {
+        status: current.status,
+        latitude: current.latitude,
+        longitude: current.longitude,
+        geofenceRadiusMeters: current.geofenceRadiusMeters,
+      },
+      newState: {
+        status: updatedRecord.status,
+        latitude: updatedRecord.latitude,
+        longitude: updatedRecord.longitude,
+        geofenceRadiusMeters: updatedRecord.geofenceRadiusMeters,
+      },
+      remarks: changeRemarks || `Location updated by ${caller.name}`,
+      changedAt: now,
+    };
+    this.changeHistory.unshift(historyEntry);
+
     this.persistToStorage();
     this.notify();
 
@@ -343,6 +492,16 @@ class LocationRepository {
             updated_at: now,
           })
           .eq('id', id);
+
+        await client.from('location_change_history').insert({
+          id: historyEntry.id,
+          location_id: id,
+          changed_by: caller.id,
+          change_type: historyEntry.changeType,
+          previous_state: historyEntry.previousState,
+          new_state: historyEntry.newState,
+          remarks: historyEntry.remarks,
+        });
       } catch (err) {
         console.warn('Supabase editLocation update warning:', err);
       }
@@ -355,19 +514,21 @@ class LocationRepository {
    * 3. Activate and deactivate locations
    */
   public async toggleLocationStatus(id: string, caller: AuthUser): Promise<LocationRecord> {
-    this.assertHodAuthority(caller);
     const loc = this.getLocationById(id);
     if (!loc) throw new Error(`Location with id ${id} not found.`);
+    this.assertHodAuthority(caller, loc.departmentCode);
 
     const nextStatus = loc.status === 'active' ? 'inactive' : 'active';
-    return this.editLocation(id, { status: nextStatus, isActive: nextStatus === 'active' }, caller);
+    return this.editLocation(id, { status: nextStatus, isActive: nextStatus === 'active' }, caller, `Status toggled to ${nextStatus}`);
   }
 
   /**
    * 4. Approve internship location
    */
   public async approveLocation(id: string, caller: AuthUser): Promise<LocationRecord> {
-    this.assertHodAuthority(caller);
+    const loc = this.getLocationById(id);
+    if (!loc) throw new Error(`Location with id ${id} not found.`);
+    this.assertHodAuthority(caller, loc.departmentCode);
 
     const now = new Date().toISOString();
     return this.editLocation(
@@ -378,7 +539,8 @@ class LocationRepository {
         approvedBy: caller.name || caller.id,
         approvedAt: now,
       },
-      caller
+      caller,
+      `Location approved and activated by ${caller.name}`
     );
   }
 
@@ -400,8 +562,40 @@ class LocationRepository {
     });
   }
 
+  /**
+   * 6. Query location change history audit log
+   */
+  public getLocationChangeHistory(locationId?: string, caller?: AuthUser): LocationChangeHistoryRecord[] {
+    if (caller !== undefined) {
+      AuthorizationPolicy.validateIdentity(caller);
+      if (caller.role === 'student') {
+        throw new ForbiddenException('Access denied. Students cannot inspect location change audit history.');
+      }
+    }
+
+    if (locationId) {
+      const loc = this.getLocationById(locationId);
+      if (loc && caller && caller.role === 'hod') {
+        const callerDept = (caller.departmentCode || caller.dept?.split(' ')[0] || '').trim().toUpperCase();
+        if (callerDept && callerDept !== loc.departmentCode.toUpperCase()) {
+          throw new ForbiddenException(`Access denied. HOD of '${callerDept}' cannot view history for location in '${loc.departmentCode}'.`);
+        }
+      }
+      return this.changeHistory.filter((h) => h.locationId === locationId);
+    }
+
+    if (caller && caller.role === 'hod') {
+      const callerDept = (caller.departmentCode || caller.dept?.split(' ')[0] || '').trim().toUpperCase();
+      const deptLocIds = new Set(this.locations.filter((l) => l.departmentCode.toUpperCase() === callerDept).map((l) => l.id));
+      return this.changeHistory.filter((h) => deptLocIds.has(h.locationId));
+    }
+
+    return [...this.changeHistory];
+  }
+
   public resetToDefaults(): void {
-    this.locations = [...DEFAULT_LOCATIONS];
+    this.locations = DEFAULT_LOCATIONS.map(l => ({ ...l }));
+    this.changeHistory = DEFAULT_LOCATION_HISTORY.map(h => ({ ...h }));
     this.persistToStorage();
     this.notify();
   }

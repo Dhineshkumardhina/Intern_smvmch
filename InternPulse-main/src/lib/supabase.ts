@@ -61,7 +61,7 @@ export const supabase = isSupabaseConfigured ? getSupabaseClient() : null;
 // Centralized Database Schema Types (Phase 1)
 // ==========================================
 
-export type ApplicationRole = 'hod' | 'mentor' | 'student';
+export type ApplicationRole = 'super_admin' | 'admin' | 'hod' | 'mentor' | 'student';
 
 export interface DbProfile {
   id: string; // auth.users UUID foreign key
@@ -132,6 +132,7 @@ export interface DbStudent {
 export interface DbStudentDailyLog {
   id?: string;
   student_id: string;
+  institution_id?: string;
   session_id?: string;
   assignment_id?: string;
   log_date?: string;
@@ -156,6 +157,8 @@ export interface DbInstitution {
   code: string;
   name: string;
   short_name?: string | null;
+  domain?: string | null;
+  subdomain?: string | null;
   address?: string | null;
   city?: string | null;
   state?: string | null;
@@ -164,11 +167,47 @@ export interface DbInstitution {
   contact_email?: string | null;
   contact_phone?: string | null;
   website?: string | null;
-  status: 'active' | 'suspended' | 'inactive';
+  status: 'provisioning' | 'pilot' | 'active' | 'suspended' | 'inactive' | 'archived';
+  branding_config?: Record<string, any> | null;
+  institutional_settings?: Record<string, any> | null;
+  dpdp_compliance_config?: Record<string, any> | null;
   created_by?: string | null;
   updated_by?: string | null;
   created_at?: string;
   updated_at?: string;
+}
+
+export interface DbInstitutionAdmin {
+  id: string;
+  institution_id: string;
+  profile_id: string;
+  admin_tier: 'institution_admin' | 'dean_academic' | 'principal' | 'compliance_officer';
+  appointed_at: string;
+  is_active: boolean;
+  created_at?: string;
+}
+
+export interface DbInstitutionMembership {
+  id: string;
+  institution_id: string;
+  profile_id: string;
+  membership_role: 'super_admin' | 'admin' | 'hod' | 'mentor' | 'student' | 'staff';
+  status: 'active' | 'suspended' | 'inactive' | 'transferred' | 'graduated';
+  valid_from: string;
+  valid_to?: string | null;
+  created_at?: string;
+}
+
+export interface DbStudentConsent {
+  id: string;
+  institution_id: string;
+  student_id: string;
+  consent_given: boolean;
+  notice_version: string;
+  consent_timestamp: string;
+  withdrawn_at?: string | null;
+  withdrawal_reason?: string | null;
+  created_at?: string;
 }
 
 export interface DbDepartment {
@@ -179,10 +218,67 @@ export interface DbDepartment {
   hod_id?: string | null;
   contact_email?: string | null;
   status: 'active' | 'inactive';
+  is_pilot_authorized?: boolean;
+  max_student_capacity?: number;
+  academic_head_name?: string | null;
   created_by?: string | null;
   updated_by?: string | null;
   created_at?: string;
   updated_at?: string;
+}
+
+export interface DbDepartmentAdmin {
+  id: string;
+  institution_id?: string;
+  department_id: string;
+  profile_id: string;
+  role_type: 'hod' | 'deputy_hod' | 'coordinator' | 'technical_auditor';
+  is_primary: boolean;
+  appointed_at: string;
+  status: 'active' | 'inactive' | 'on_leave';
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface DbDepartmentMembership {
+  id: string;
+  institution_id?: string;
+  profile_id: string;
+  department_id: string;
+  membership_role: 'hod' | 'mentor' | 'staff' | 'student';
+  is_primary: boolean;
+  valid_from: string;
+  valid_to?: string | null;
+  status: 'active' | 'inactive' | 'transferred';
+  created_at?: string;
+}
+
+export interface DbInternshipBatch {
+  id: string;
+  institution_id?: string;
+  department_id: string;
+  batch_name: string;
+  academic_year: string;
+  term_code: 'ODD' | 'EVEN' | 'SUMMER';
+  start_date: string;
+  end_date: string;
+  status: 'draft' | 'active' | 'completed' | 'archived';
+  created_by?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface DbStudentDepartmentEnrollment {
+  id: string;
+  institution_id?: string;
+  student_id: string;
+  department_id: string;
+  batch_id?: string | null;
+  register_number: string;
+  current_semester: number;
+  enrollment_status: 'active' | 'transferred' | 'graduated' | 'suspended' | 'withdrawn';
+  enrolled_at: string;
+  created_at?: string;
 }
 
 export interface DbMentorEntity {
@@ -272,6 +368,7 @@ export interface DbInternshipAssignment {
 
 export interface DbAttendanceSession {
   id: string;
+  institution_id?: string;
   assignment_id: string;
   student_id: string;
   session_date: string;
@@ -280,6 +377,17 @@ export interface DbAttendanceSession {
   check_in_location_id?: string | null;
   check_out_location_id?: string | null;
   total_hours: number;
+  required_hours?: number;
+  scheduled_start_time?: string | null;
+  scheduled_end_time?: string | null;
+  check_in_distance_meters?: number | null;
+  check_out_distance_meters?: number | null;
+  compliance_rate?: number;
+  offline_queued?: boolean;
+  client_timestamp?: string | null;
+  exception_reason?: string | null;
+  mentor_reviewed_at?: string | null;
+  mentor_reviewed_by?: string | null;
   status: 'present' | 'absent' | 'half_day' | 'late' | 'flagged' | 'holiday' | 'leave';
   is_verified: boolean;
   notes?: string | null;
@@ -291,6 +399,7 @@ export interface DbAttendanceSession {
 
 export interface DbLocationVerification {
   id: string;
+  institution_id?: string;
   session_id?: string | null;
   assignment_id: string;
   student_id: string;
@@ -314,13 +423,31 @@ export interface DbLocationVerification {
 
 export interface DbVerificationSchedule {
   id: string;
+  institution_id?: string;
   assignment_id: string;
   student_id: string;
   target_date: string;
   window_start: string;
   window_end: string;
-  status: 'pending' | 'dispatched' | 'responded' | 'expired' | 'cancelled';
+  status:
+    | 'SCHEDULED'
+    | 'OPEN'
+    | 'SUBMITTED'
+    | 'VERIFIED'
+    | 'MISSED'
+    | 'LOCATION_UNAVAILABLE'
+    | 'EXPIRED'
+    | 'CANCELLED'
+    | 'pending'
+    | 'dispatched'
+    | 'responded';
   verification_id?: string | null;
+  submission_timestamp?: string | null;
+  notification_dispatched_at?: string | null;
+  retry_count?: number;
+  max_retries?: number;
+  missed_reason?: string | null;
+  timezone?: string;
   dispatched_at?: string | null;
   created_by?: string | null;
   created_at?: string;
@@ -334,7 +461,28 @@ export interface DbNotification {
   sender_id?: string | null;
   title: string;
   message: string;
-  notification_type: 'verification_request' | 'verification_result' | 'attendance_alert' | 'risk_alert' | 'log_feedback' | 'assignment_update' | 'system_announcement';
+  notification_type:
+    | 'new_internship_assignment'
+    | 'upcoming_verification'
+    | 'verification_request'
+    | 'successful_verification'
+    | 'confirmed_outside_geofence'
+    | 'missed_verification'
+    | 'gps_disabled'
+    | 'location_permission_revoked'
+    | 'student_device_offline'
+    | 'internship_assignment_updated'
+    | 'verification_result'
+    | 'attendance_alert'
+    | 'risk_alert'
+    | 'log_feedback'
+    | 'assignment_update'
+    | 'system_announcement';
+  category?: 'VIOLATION' | 'TECHNICAL_FAILURE' | 'ATTENDANCE_PROMPT' | 'SYSTEM_UPDATE';
+  priority?: 'URGENT' | 'HIGH' | 'NORMAL' | 'LOW';
+  delivery_status?: 'PENDING' | 'DELIVERED' | 'FAILED' | 'SUPPRESSED';
+  deduplication_key?: string | null;
+  retry_count?: number;
   action_url?: string | null;
   payload?: Record<string, any>;
   is_read: boolean;
@@ -354,4 +502,137 @@ export interface DbAuditLog {
   ip_address?: string | null;
   user_agent?: string | null;
   created_at?: string;
+}
+
+export interface DbLocationChangeHistory {
+  id: string;
+  institution_id?: string;
+  location_id: string;
+  changed_by?: string | null;
+  change_type: 'created' | 'status_changed' | 'geofence_updated' | 'coordinates_updated' | 'schedule_updated' | 'approved' | 'metadata_updated';
+  previous_state?: Record<string, any> | null;
+  new_state?: Record<string, any> | null;
+  remarks?: string | null;
+  changed_at?: string;
+}
+
+export interface DbStudentTransfer {
+  id: string;
+  institution_id?: string;
+  student_id: string;
+  from_department_id: string;
+  to_department_id: string;
+  authorized_by: string;
+  reason: string;
+  previous_batch_id?: string | null;
+  new_batch_id?: string | null;
+  academic_year: string;
+  transferred_at?: string;
+}
+
+export interface DbStudentImportBatch {
+  id: string;
+  institution_id?: string;
+  file_name: string;
+  file_format: string;
+  file_hash: string;
+  uploaded_by?: string | null;
+  uploaded_by_name: string;
+  target_department_code: string;
+  total_rows: number;
+  valid_rows: number;
+  imported_count: number;
+  skipped_count: number;
+  failed_count: number;
+  is_dry_run: boolean;
+  status: string;
+  imported_student_ids: any;
+  error_log_json: any;
+  created_at?: string;
+  completed_at?: string | null;
+}
+
+export interface DbStudentOnboardingToken {
+  id: string;
+  institution_id?: string;
+  student_id: string;
+  register_number: string;
+  email: string;
+  token_hash: string;
+  is_used: boolean;
+  expires_at: string;
+  created_at?: string;
+  used_at?: string | null;
+}
+
+export interface DbReportExportLog {
+  id: string;
+  institution_id?: string;
+  report_type: string;
+  format: 'pdf' | 'csv' | 'xlsx';
+  requested_by_id: string;
+  requested_by_name: string;
+  requested_by_role: string;
+  department_filter?: string | null;
+  batch_filter?: string | null;
+  start_date?: string | null;
+  end_date?: string | null;
+  record_count: number;
+  file_name: string;
+  file_hash?: string | null;
+  created_at?: string;
+}
+
+export interface DbInstitutionRegistrationRequest {
+  id: string;
+  institution_name: string;
+  institution_code: string;
+  institution_type: 'engineering' | 'medical' | 'arts_science' | 'polytechnic' | 'university' | 'standalone_institute';
+  domain: string;
+  address: string;
+  city: string;
+  state: string;
+  country: string;
+  postal_code?: string | null;
+  contact_email: string;
+  contact_phone: string;
+  website?: string | null;
+  admin_name: string;
+  admin_email: string;
+  admin_phone?: string | null;
+  admin_designation: string;
+  status: 'pending' | 'approved' | 'rejected' | 'suspended' | 'cancelled';
+  rejection_reason?: string | null;
+  reviewed_by?: string | null;
+  reviewed_at?: string | null;
+  provisioning_status: 'unprovisioned' | 'provisioning' | 'provisioned' | 'failed';
+  provisioning_error?: string | null;
+  provisioned_institution_id?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface DbPlatformAuditLog {
+  id: string;
+  action: string;
+  performed_by_id?: string | null;
+  performed_by_name: string;
+  performed_by_role: string;
+  target_institution_id?: string | null;
+  target_institution_code?: string | null;
+  details?: Record<string, any>;
+  ip_address?: string | null;
+  user_agent?: string | null;
+  created_at?: string;
+}
+
+export interface DbInstitutionLifecycleLog {
+  id: string;
+  institution_id: string;
+  previous_status: string;
+  new_status: string;
+  reason: string;
+  action_by?: string | null;
+  action_by_name: string;
+  action_at?: string;
 }

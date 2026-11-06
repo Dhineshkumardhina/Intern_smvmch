@@ -7,6 +7,7 @@ class StudentModel {
   final String name;
   final String email;
   final String collegeId;
+  final String? institutionId;
   final String departmentCode;
   final String departmentName;
   final String academicYear;
@@ -27,6 +28,7 @@ class StudentModel {
     required this.name,
     required this.email,
     required this.collegeId,
+    this.institutionId = 'a0000000-0000-0000-0000-000000000001',
     required this.departmentCode,
     required this.departmentName,
     required this.academicYear,
@@ -49,6 +51,7 @@ class StudentModel {
       'name': name,
       'email': email,
       'collegeId': collegeId,
+      'institutionId': institutionId,
       'departmentCode': departmentCode,
       'departmentName': departmentName,
       'academicYear': academicYear,
@@ -72,6 +75,7 @@ class StudentModel {
       name: map['name'] ?? '',
       email: map['email'] ?? '',
       collegeId: map['collegeId'] ?? '',
+      institutionId: map['institution_id'] ?? map['institutionId'] ?? 'a0000000-0000-0000-0000-000000000001',
       departmentCode: map['departmentCode'] ?? '',
       departmentName: map['departmentName'] ?? '',
       academicYear: map['academicYear'] ?? '1st Year',

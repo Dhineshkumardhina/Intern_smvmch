@@ -1,4 +1,4 @@
-export type UserRole = 'hod' | 'mentor' | 'student' | 'admin';
+export type UserRole = 'hod' | 'mentor' | 'student' | 'admin' | 'super_admin' | 'platform_super_admin';
 
 export interface AuthUser {
   id: string;
@@ -7,6 +7,12 @@ export interface AuthUser {
   role: UserRole;
   dept: string;
   departmentCode: string;
+  departmentId?: string;
+  institutionId?: string;
+  institutionCode?: string;
+  institutionDomain?: string;
+  brandingConfig?: Record<string, any>;
+  institutionalSettings?: Record<string, any>;
   phone?: string;
   year?: string;
   college: string;
@@ -29,6 +35,8 @@ export interface RegisterStudentParams {
   password: string;
   academicYear: string;
   department: string;
+  institutionId?: string;
+  institutionCode?: string;
 }
 
 export interface InternshipSetupParams {

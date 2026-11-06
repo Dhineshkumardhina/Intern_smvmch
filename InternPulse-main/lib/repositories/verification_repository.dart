@@ -1,3 +1,4 @@
+import '../core/geolocation/geolocation_types.dart';
 import '../models/location_verification_model.dart';
 
 abstract class VerificationRepository {
@@ -12,16 +13,23 @@ abstract class VerificationRepository {
     required String assignmentId,
     required String studentId,
     required String eventType,
-    required double latitude,
-    required double longitude,
+    required double? latitude,
+    required double? longitude,
     double? accuracyMeters,
+    double? distanceMeters,
+    double? geofenceRadiusMeters,
+    VerificationResultState? verificationResult,
+    ConnectivityStatus? connectivityStatus,
+    BatteryOptimizationStatus? batteryOptimizationStatus,
+    bool consentVerified = true,
+    bool withinMonitoringWindow = true,
     String? locationId,
     String? sessionId,
     bool isMockLocation = false,
     Map<String, dynamic>? deviceMetadata,
+    String? remarks,
   });
 
   /// Realtime stream of location verification outcomes
   Stream<List<LocationVerificationModel>> watchVerifications(String studentId);
 }
-

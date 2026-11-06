@@ -1,6 +1,11 @@
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/auth/auth_provider.dart';
+import '../../../../core/geolocation/geolocation_types.dart';
+import '../../../../core/geolocation/geospatial_calculator.dart';
+import '../../../../core/geolocation/mobile_location_service.dart';
+import '../../../../core/geolocation/anti_surveillance_guard.dart';
+import '../../../../core/privacy/consent_service.dart';
 import '../../../../models/attendance_model.dart';
 import '../../../../models/internship_model.dart';
 import '../../../../models/location_model.dart';
@@ -167,14 +172,50 @@ class StudentDashboardNotifier extends StateNotifier<AsyncValue<StudentDashboard
 
       // Record verification ping if coordinates provided
       if (latitude != null && longitude != null) {
+        final consentService = ConsentService();
+        final hasConsent = consentService.isConsentActive(current.profile.id);
+        final isWithinWindow = AntiSurveillanceGuard.isWithinMonitoringWindow(
+          timestamp: DateTime.now(),
+          monitoringStartTime: current.activeAssignment?.monitoringStartTime,
+          monitoringEndTime: current.activeAssignment?.monitoringEndTime,
+          startDate: current.activeAssignment?.startDate,
+          endDate: current.activeAssignment?.endDate,
+        );
+
+        final loc = current.assignedLocation;
+        double? distance;
+        VerificationResultState result = VerificationResultState.withinGeofence;
+        final radius = loc?.geofenceRadiusMeters ?? 200.0;
+
+        if (!hasConsent || !isWithinWindow) {
+          result = VerificationResultState.permissionDenied;
+        } else if (loc != null) {
+          distance = GeospatialCalculator.calculateHaversineDistance(
+            lat1: loc.latitude,
+            lon1: loc.longitude,
+            lat2: latitude,
+            lon2: longitude,
+          );
+          result = distance <= radius
+              ? VerificationResultState.withinGeofence
+              : VerificationResultState.outsideGeofence;
+        }
+
         await verificationRepo.recordVerification(
           assignmentId: current.activeAssignment!.id,
           studentId: current.profile.id,
           sessionId: session.id,
           locationId: current.activeAssignment!.locationId,
           eventType: 'check_in',
-          latitude: latitude,
-          longitude: longitude,
+          latitude: (hasConsent && isWithinWindow) ? latitude : null,
+          longitude: (hasConsent && isWithinWindow) ? longitude : null,
+          distanceMeters: (hasConsent && isWithinWindow) ? distance : null,
+          geofenceRadiusMeters: radius,
+          verificationResult: result,
+          connectivityStatus: ConnectivityStatus.wifi,
+          batteryOptimizationStatus: BatteryOptimizationStatus.optimized,
+          consentVerified: hasConsent,
+          withinMonitoringWindow: isWithinWindow,
         );
       }
 
@@ -202,14 +243,50 @@ class StudentDashboardNotifier extends StateNotifier<AsyncValue<StudentDashboard
       );
 
       if (latitude != null && longitude != null && current.activeAssignment != null) {
+        final consentService = ConsentService();
+        final hasConsent = consentService.isConsentActive(current.profile.id);
+        final isWithinWindow = AntiSurveillanceGuard.isWithinMonitoringWindow(
+          timestamp: DateTime.now(),
+          monitoringStartTime: current.activeAssignment?.monitoringStartTime,
+          monitoringEndTime: current.activeAssignment?.monitoringEndTime,
+          startDate: current.activeAssignment?.startDate,
+          endDate: current.activeAssignment?.endDate,
+        );
+
+        final loc = current.assignedLocation;
+        double? distance;
+        VerificationResultState result = VerificationResultState.withinGeofence;
+        final radius = loc?.geofenceRadiusMeters ?? 200.0;
+
+        if (!hasConsent || !isWithinWindow) {
+          result = VerificationResultState.permissionDenied;
+        } else if (loc != null) {
+          distance = GeospatialCalculator.calculateHaversineDistance(
+            lat1: loc.latitude,
+            lon1: loc.longitude,
+            lat2: latitude,
+            lon2: longitude,
+          );
+          result = distance <= radius
+              ? VerificationResultState.withinGeofence
+              : VerificationResultState.outsideGeofence;
+        }
+
         await verificationRepo.recordVerification(
           assignmentId: current.activeAssignment!.id,
           studentId: current.profile.id,
           sessionId: current.todayAttendance!.id,
           locationId: current.activeAssignment!.locationId,
           eventType: 'check_out',
-          latitude: latitude,
-          longitude: longitude,
+          latitude: (hasConsent && isWithinWindow) ? latitude : null,
+          longitude: (hasConsent && isWithinWindow) ? longitude : null,
+          distanceMeters: (hasConsent && isWithinWindow) ? distance : null,
+          geofenceRadiusMeters: radius,
+          verificationResult: result,
+          connectivityStatus: ConnectivityStatus.wifi,
+          batteryOptimizationStatus: BatteryOptimizationStatus.optimized,
+          consentVerified: hasConsent,
+          withinMonitoringWindow: isWithinWindow,
         );
       }
 

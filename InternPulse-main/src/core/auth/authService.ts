@@ -1,5 +1,6 @@
 import { AuthUser, RegisterStudentParams, InternshipSetupParams, AuthResponse, UserRole } from './authUser';
 import { COLLEGE_NAME } from './demoAccounts';
+import { DEFAULT_INSTITUTIONS } from '../../data/initialData';
 import { getSupabaseClient, isSupabaseConfigured, DbProfile } from '../../lib/supabase';
 import { internshipRepository } from '../repository/internshipRepository';
 
@@ -148,6 +149,12 @@ class ProductionSupabaseAuthService implements IAuthService {
         const p: DbProfile = profileData[0];
         const deptCode = (p.department_code || 'CSEBS').toUpperCase();
         const role = p.role as UserRole;
+        const instId = p.institution_id || 'a0000000-0000-0000-0000-000000000001';
+
+        const defaultInst = DEFAULT_INSTITUTIONS.find(i => i.id === instId);
+        const collegeName = defaultInst ? defaultInst.name : COLLEGE_NAME;
+        const instCode = defaultInst ? defaultInst.code : 'SMVEC';
+        const instDomain = defaultInst ? defaultInst.domain : 'smvec.ac.in';
 
         return {
           id: p.id || userId,
@@ -158,8 +165,13 @@ class ProductionSupabaseAuthService implements IAuthService {
           role: role,
           dept: `${deptCode} Department`,
           departmentCode: deptCode,
+          institutionId: instId,
+          institutionCode: instCode,
+          institutionDomain: instDomain,
+          brandingConfig: defaultInst?.brandingConfig,
+          institutionalSettings: defaultInst?.institutionalSettings,
           phone: p.phone || undefined,
-          college: COLLEGE_NAME,
+          college: collegeName,
           isActive: p.is_active ?? true,
           setupComplete: true,
         };
@@ -390,6 +402,10 @@ class ProductionSupabaseAuthService implements IAuthService {
 
     const email = params.email.trim().toLowerCase();
     const studentId = params.studentId.trim().toUpperCase();
+    const instId = params.institutionId || 'a0000000-0000-0000-0000-000000000001';
+    const instCode = params.institutionCode || 'SMVEC';
+    const defaultInst = DEFAULT_INSTITUTIONS.find(i => i.id === instId || i.code === instCode);
+    const collegeName = defaultInst ? defaultInst.name : COLLEGE_NAME;
 
     // 1. Sign up user in Supabase Auth (Role strictly locked to 'student')
     const { data: authData, error: authError } = await client.auth.signUp({
@@ -404,6 +420,8 @@ class ProductionSupabaseAuthService implements IAuthService {
           academicYear: params.academicYear,
           department: params.department,
           departmentCode: params.department,
+          institutionId: instId,
+          institutionCode: instCode,
           setupComplete: false,
         },
       },
@@ -426,7 +444,12 @@ class ProductionSupabaseAuthService implements IAuthService {
       year: params.academicYear,
       dept: `${params.department} Department`,
       departmentCode: params.department,
-      college: COLLEGE_NAME,
+      college: collegeName,
+      institutionId: instId,
+      institutionCode: instCode,
+      institutionDomain: defaultInst?.domain,
+      brandingConfig: defaultInst?.brandingConfig,
+      institutionalSettings: defaultInst?.institutionalSettings,
       isActive: true,
       setupComplete: false,
     };
@@ -443,6 +466,7 @@ class ProductionSupabaseAuthService implements IAuthService {
           phone: newUser.phone,
           department_code: params.department,
           student_id: studentId,
+          institution_id: instId,
           is_active: true,
         }, { onConflict: 'id' });
     } catch (e) {

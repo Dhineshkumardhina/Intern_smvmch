@@ -6,6 +6,7 @@ class UserModel {
   final String displayName;
   final UserRole role;
   final String collegeId;
+  final String? institutionId;
   final String departmentCode;
   final String? studentId;
   final String? mentorId;
@@ -21,6 +22,7 @@ class UserModel {
     required this.displayName,
     required this.role,
     this.collegeId = 'smvec_puducherry_main',
+    this.institutionId = 'a0000000-0000-0000-0000-000000000001',
     this.departmentCode = 'CSEBS',
     this.studentId,
     this.mentorId,
@@ -38,6 +40,7 @@ class UserModel {
       'displayName': displayName,
       'role': role.value,
       'collegeId': collegeId,
+      'institutionId': institutionId,
       'departmentCode': departmentCode,
       'studentId': studentId,
       'mentorId': mentorId,
@@ -56,6 +59,7 @@ class UserModel {
       displayName: map['displayName'] ?? map['full_name'] ?? map['name'] ?? '',
       role: UserRole.fromString(map['role']),
       collegeId: map['collegeId'] ?? 'smvec_puducherry_main',
+      institutionId: map['institution_id'] ?? map['institutionId'] ?? 'a0000000-0000-0000-0000-000000000001',
       departmentCode: (map['department_code'] ?? map['departmentCode'] ?? 'CSEBS').toString().toUpperCase(),
       studentId: map['student_id'] ?? map['studentId'],
       mentorId: map['mentor_id'] ?? map['mentorId'],

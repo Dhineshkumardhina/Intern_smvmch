@@ -12,12 +12,14 @@ import {
   MapPin,
   Building2,
   ShieldCheck,
-  Check
+  Check,
+  Download
 } from 'lucide-react';
 import { StudentRecord } from '../data/initialData';
 import { AuthUser } from '../core/auth/authUser';
 import { internshipRepository } from '../core/repository/internshipRepository';
 import { locationRepository } from '../core/repository/locationRepository';
+import { InstitutionalReportExportModal } from './analytics/InstitutionalReportExportModal';
 
 interface StudentDashboardProps {
   currentUser: AuthUser;
@@ -47,6 +49,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
   const [status, setStatus] = useState<StudentRecord['status']>('onTrack');
   const [blocker, setBlocker] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -99,9 +102,18 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
           </button>
         </div>
 
-        <div className="text-xs text-[#57657A] flex items-center space-x-1.5 bg-[#EFEDF6] px-3 py-1.5 rounded-lg">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-          <span>Mentor Stream: <strong>{studentData.mentor}</strong></span>
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={() => setIsExportModalOpen(true)}
+            className="px-3 py-1.5 rounded-lg border border-[#24389C] bg-[#DEE0FF]/40 text-[#00105C] hover:bg-[#DEE0FF] text-xs font-bold flex items-center space-x-1.5 transition-all shadow-xs"
+          >
+            <Download className="w-3.5 h-3.5 text-[#24389C]" />
+            <span>Export Dossier</span>
+          </button>
+          <div className="text-xs text-[#57657A] flex items-center space-x-1.5 bg-[#EFEDF6] px-3 py-1.5 rounded-lg">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span>Mentor Stream: <strong>{studentData.mentor}</strong></span>
+          </div>
         </div>
       </div>
 
@@ -432,6 +444,15 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
             </div>
           </form>
         </div>
+      )}
+
+      {isExportModalOpen && (
+        <InstitutionalReportExportModal
+          isOpen={isExportModalOpen}
+          onClose={() => setIsExportModalOpen(false)}
+          currentUser={currentUser}
+          defaultReportType="student_dossier"
+        />
       )}
     </div>
   );

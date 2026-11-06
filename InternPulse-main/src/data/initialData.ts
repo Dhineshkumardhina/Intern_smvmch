@@ -2,6 +2,8 @@ export interface StudentRecord {
   id: string;
   studentId: string; // Register Number
   studentName: string;
+  institutionId?: string;
+  institutionCode?: string;
   email?: string;
   phone?: string;
   academicYear: string; // '1st Year' | '2nd Year' | '3rd Year' | '4th Year'
@@ -23,12 +25,20 @@ export interface StudentRecord {
   internshipLocationId?: string;
   internshipStartDate?: string;
   internshipEndDate?: string;
+  batchId?: string;
+  batchName?: string;
+  isFirstLogin?: boolean;
+  onboardingStatus?: 'pending_verification' | 'activated' | 'suspended';
+  activatedAt?: string;
+  importBatchId?: string;
 }
 
 export interface MentorRecord {
   id: string;
   name: string;
   email: string;
+  institutionId?: string;
+  institutionCode?: string;
   departmentCode: string;
   departmentCodes: string[];
   assignedStudentsCount: number;
@@ -44,9 +54,469 @@ export interface HodRecord {
   hodId: string;
   name: string;
   email: string;
+  institutionId?: string;
+  institutionCode?: string;
   departmentCode: string;
   phone?: string;
   officeLocation?: string;
+}
+
+export interface DepartmentRecord {
+  id: string;
+  institutionId: string;
+  code: string;
+  name: string;
+  hodId?: string;
+  hodName?: string;
+  status: 'active' | 'inactive';
+  isPilotAuthorized: boolean;
+  maxStudentCapacity: number;
+  academicHeadName?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  description?: string;
+  defaultMonitoringStartTime?: string;
+  defaultMonitoringEndTime?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export type InstitutionType = 
+  | 'engineering' 
+  | 'medical' 
+  | 'arts_science' 
+  | 'polytechnic' 
+  | 'university' 
+  | 'standalone_institute';
+
+export type RegistrationRequestStatus = 
+  | 'pending' 
+  | 'approved' 
+  | 'rejected' 
+  | 'suspended' 
+  | 'cancelled';
+
+export type ProvisioningStatus = 
+  | 'unprovisioned' 
+  | 'provisioning' 
+  | 'provisioned' 
+  | 'failed';
+
+export interface InstitutionRegistrationRequestRecord {
+  id: string;
+  institutionName: string;
+  institutionCode: string;
+  institutionType: InstitutionType;
+  domain: string;
+  address: string;
+  city: string;
+  state: string;
+  country: string;
+  postalCode?: string;
+  contactEmail: string;
+  contactPhone: string;
+  website?: string;
+  adminName: string;
+  adminEmail: string;
+  adminPhone?: string;
+  adminDesignation: string;
+  status: RegistrationRequestStatus;
+  rejectionReason?: string;
+  reviewedById?: string;
+  reviewedByName?: string;
+  reviewedAt?: string;
+  provisioningStatus: ProvisioningStatus;
+  provisioningError?: string;
+  provisionedInstitutionId?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PlatformAuditLogRecord {
+  id: string;
+  action: string;
+  performedById: string;
+  performedByName: string;
+  performedByRole: string;
+  targetInstitutionId?: string;
+  targetInstitutionCode?: string;
+  details?: Record<string, any>;
+  ipAddress?: string;
+  userAgent?: string;
+  createdAt: string;
+}
+
+export interface PlatformOperationalMetrics {
+  totalInstitutions: number;
+  activeInstitutions: number;
+  suspendedInstitutions: number;
+  pendingRegistrationRequests: number;
+  approvedRegistrationRequests: number;
+  rejectedRegistrationRequests: number;
+  totalDepartments: number;
+  totalMentors: number;
+  totalStudents: number;
+  totalActiveAssignments: number;
+  totalAttendanceSessions: number;
+  totalVerificationsEvaluated: number;
+  systemHealth: 'HEALTHY' | 'DEGRADED' | 'MAINTENANCE';
+  calculatedAt: string;
+}
+
+export interface InternshipBatchRecord {
+  id: string;
+  institutionId?: string;
+  institutionCode?: string;
+  departmentCode: string;
+  batchName: string;
+  academicYear: string;
+  termCode: 'ODD' | 'EVEN' | 'SUMMER';
+  semester: number;
+  startDate: string;
+  endDate: string;
+  status: 'draft' | 'active' | 'completed' | 'archived';
+  maxCapacity: number;
+  enrolledStudentCount: number;
+  createdById?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface InstitutionRecord {
+  id: string;
+  code: string;
+  name: string;
+  shortName?: string;
+  domain: string;
+  subdomain?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  website?: string;
+  status: 'provisioning' | 'pilot' | 'active' | 'suspended' | 'inactive' | 'archived';
+  brandingConfig?: {
+    primaryColor: string;
+    secondaryColor: string;
+    logoUrl: string;
+    portalTitle: string;
+  };
+  institutionalSettings?: {
+    defaultShiftStart: string;
+    defaultShiftEnd: string;
+    requiredDailyHours: number;
+    verificationWindowsPerDay: number;
+    windowDurationMinutes: number;
+    complianceThresholdPercentage: number;
+    geofenceDefaultRadiusMeters: number;
+  };
+  dpdpComplianceConfig?: {
+    dpoName: string;
+    dpoDesignation: string;
+    dpoEmail: string;
+    dpoAddress: string;
+    noticeVersion: string;
+  };
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface StudentTransferRecord {
+  id: string;
+  studentId: string;
+  studentName: string;
+  fromDepartmentCode: string;
+  toDepartmentCode: string;
+  authorizedById: string;
+  authorizedByName: string;
+  reason: string;
+  previousBatchId?: string;
+  newBatchId?: string;
+  academicYear: string;
+  transferredAt: string;
+}
+
+export interface LocationChangeHistoryRecord {
+  id: string;
+  locationId: string;
+  locationName: string;
+  changedById: string;
+  changedByName: string;
+  changeType: 'created' | 'status_changed' | 'geofence_updated' | 'coordinates_updated' | 'schedule_updated' | 'approved' | 'metadata_updated';
+  previousState?: Record<string, any>;
+  newState?: Record<string, any>;
+  remarks?: string;
+  changedAt: string;
+}
+
+export interface InternshipProviderRecord {
+  companyName: string;
+  totalLocations: number;
+  departmentCount: number;
+  participatingDepartments: string[];
+  providerStatus: 'active' | 'pending_approval' | 'inactive';
+  earliestStartDate: string;
+  latestEndDate: string;
+  activeInternsCount: number;
+  contactEmail?: string;
+  contactPhone?: string;
+}
+
+export interface StudentImportBatchRecord {
+  id: string;
+  fileName: string;
+  fileFormat: 'csv' | 'xlsx' | 'json';
+  fileHash: string;
+  uploadedById: string;
+  uploadedByName: string;
+  targetDepartmentCode: string;
+  totalRows: number;
+  validRows: number;
+  importedCount: number;
+  skippedCount: number;
+  failedCount: number;
+  isDryRun: boolean;
+  status: 'pending' | 'dry_run' | 'completed' | 'failed' | 'rolled_back';
+  importedStudentIds: string[];
+  errorLogJson: Array<{
+    rowNumber: number;
+    registerNumber?: string;
+    columnName?: string;
+    invalidValue?: any;
+    errorMessage: string;
+  }>;
+  createdAt: string;
+  completedAt?: string;
+}
+
+export interface StudentOnboardingTokenRecord {
+  id: string;
+  studentId: string;
+  registerNumber: string;
+  email: string;
+  tokenHash: string;
+  isUsed: boolean;
+  expiresAt: string;
+  createdAt: string;
+  usedAt?: string;
+}
+
+export interface ImportValidationError {
+  rowNumber: number;
+  registerNumber?: string;
+  columnName?: string;
+  invalidValue?: any;
+  errorMessage: string;
+}
+
+export interface ImportPreviewResult {
+  fileName: string;
+  fileFormat: 'csv' | 'xlsx' | 'json';
+  totalRows: number;
+  validRowsCount: number;
+  invalidRowsCount: number;
+  duplicateRowsCount: number;
+  departmentBreakdown: Record<string, number>;
+  validSampleRows: Array<{
+    registerNumber: string;
+    name: string;
+    email: string;
+    departmentCode: string;
+    academicYear: string;
+    phone?: string;
+    mentorId?: string;
+    batchId?: string;
+  }>;
+  validationErrors: ImportValidationError[];
+}
+
+export interface ImportExecutionResult {
+  batchId: string;
+  status: 'completed' | 'dry_run' | 'failed';
+  totalRows: number;
+  importedCount: number;
+  skippedCount: number;
+  failedCount: number;
+  isDryRun: boolean;
+  generatedTokensCount: number;
+  importedStudents: StudentRecord[];
+  errors: ImportValidationError[];
+  executionTimeMs: number;
+}
+
+export interface BulkStudentImportOptions {
+  fileName: string;
+  fileFormat: 'csv' | 'xlsx' | 'json';
+  targetDepartmentCode?: string; // Optional default / override
+  dryRun?: boolean;
+  duplicateStrategy?: 'skip' | 'update' | 'reject';
+  defaultAcademicYear?: string;
+  autoAssignMentor?: boolean;
+  autoAssignBatch?: boolean;
+}
+
+export interface ReportExportLogRecord {
+  id: string;
+  institutionId?: string;
+  institutionCode?: string;
+  reportType: 'institution_summary' | 'department_performance' | 'attendance_master' | 'verification_audit' | 'mentor_workload' | 'student_dossier';
+  format: 'pdf' | 'csv' | 'xlsx';
+  requestedById: string;
+  requestedByName: string;
+  requestedByRole: string;
+  departmentFilter?: string;
+  batchFilter?: string;
+  startDate?: string;
+  endDate?: string;
+  recordCount: number;
+  fileName: string;
+  fileHash?: string;
+  createdAt: string;
+}
+
+export interface InstitutionAnalyticsSummary {
+  totalDepartments: number;
+  activeDepartments: number;
+  totalStudents: number;
+  activeInternships: number;
+  completedInternships: number;
+  delayedInternships: number;
+  atRiskInternships: number;
+  completionRate: number;
+  totalMentors: number;
+  averageMentorRatio: number;
+  totalAttendanceSessions: number;
+  overallAttendanceRate: number;
+  presentCount: number;
+  absentCount: number;
+  lateCount: number;
+  halfDayCount: number;
+  verificationOutcomes: {
+    withinGeofence: number;
+    outsideGeofence: number; // Confirmed outside geofence
+    missed: number;          // Missed scheduled window
+    gpsUnavailable: number;  // Location / GPS sensor disabled
+    networkUnavailable: number; // Cellular / Wifi lost
+    permissionDenied: number;   // Location permission revoked
+    lowAccuracy: number;        // Rejected due to poor satellite lock
+    pending: number;            // Awaiting verification submission
+    complianceRate: number;
+  };
+  notificationDelivery: {
+    totalDispatched: number;
+    deliveredCount: number;
+    failedCount: number;
+    deliveryRate: number;
+    urgentCount: number;
+    violationCount: number;
+  };
+  departmentBreakdown: Array<{
+    code: string;
+    name: string;
+    studentCount: number;
+    mentorCount: number;
+    activeBatches: number;
+    completionRate: number;
+    attendanceRate: number;
+  }>;
+}
+
+export interface DepartmentAnalyticsSummary {
+  departmentCode: string;
+  departmentName: string;
+  totalStudents: number;
+  activeBatchesCount: number;
+  batches: Array<{
+    id: string;
+    name: string;
+    term: string;
+    capacity: number;
+    enrolled: number;
+    completionRate: number;
+  }>;
+  mentorWorkload: Array<{
+    mentorId: string;
+    mentorName: string;
+    assignedCount: number;
+    capacityStatus: 'optimal' | 'high' | 'available';
+  }>;
+  attendanceRate: number;
+  presentCount: number;
+  absentCount: number;
+  lateCount: number;
+  pendingApprovals: {
+    locationsPending: number;
+    studentsPendingVerification: number;
+    totalPending: number;
+  };
+  completionRate: number;
+  verificationOutcomes: {
+    withinGeofence: number;
+    outsideGeofence: number;
+    missed: number;
+    gpsUnavailable: number;
+    networkUnavailable: number;
+    permissionDenied: number;
+    pending: number;
+  };
+}
+
+export interface MentorAnalyticsSummary {
+  mentorId: string;
+  mentorName: string;
+  assignedStudentsCount: number;
+  assignedStudents: StudentRecord[];
+  averageProgress: number;
+  attendanceRate: number;
+  pendingReviewsCount: number;
+  verificationAlerts: Array<{
+    id: string;
+    studentId: string;
+    studentName: string;
+    type: string;
+    timestamp: string;
+    message: string;
+  }>;
+}
+
+export interface StudentAnalyticsSummary {
+  studentId: string;
+  studentName: string;
+  departmentCode: string;
+  company: string;
+  mentorName: string;
+  progress: number;
+  loggedHours: number;
+  attendanceRate: number;
+  attendanceSessions: Array<any>;
+  verificationHistory: Array<any>;
+  consentStatus: {
+    consentGiven: boolean;
+    consentedAt?: string;
+    canWithdraw: boolean;
+  };
+}
+
+export interface AnalyticsExportOptions {
+  reportType: 'institution_summary' | 'department_performance' | 'attendance_master' | 'verification_audit' | 'mentor_workload' | 'student_dossier';
+  format: 'pdf' | 'csv' | 'xlsx';
+  startDate?: string;
+  endDate?: string;
+  departmentCode?: string;
+  batchId?: string;
+  studentId?: string;
+}
+
+export interface AnalyticsExportResult {
+  fileName: string;
+  format: 'pdf' | 'csv' | 'xlsx';
+  mimeType: string;
+  content: string | Uint8Array;
+  recordCount: number;
+  generatedAt: string;
+  fileHash?: string;
 }
 
 export interface CompanyRecord {
@@ -59,6 +529,8 @@ export interface CompanyRecord {
 
 export interface AttendanceSessionRecord {
   id: string;
+  institutionId?: string;
+  institutionCode?: string;
   studentId: string; // Register number
   studentName: string;
   departmentCode: string;
@@ -98,6 +570,303 @@ export const DEFAULT_HODS: HodRecord[] = [
     departmentCode: 'IT',
     phone: '+91 94432 11002',
     officeLocation: 'Tech Tower, Floor 1, Room 102',
+  },
+];
+
+export const DEFAULT_INSTITUTIONS: InstitutionRecord[] = [
+  {
+    id: 'a0000000-0000-0000-0000-000000000001',
+    code: 'SMVEC',
+    name: 'Sri Manakula Vinayagar Engineering College (Autonomous)',
+    shortName: 'SMVEC',
+    domain: 'smvec.ac.in',
+    subdomain: 'smvec',
+    address: 'Madagadipet, Puducherry - 605 107',
+    city: 'Puducherry',
+    state: 'Puducherry',
+    country: 'India',
+    contactEmail: 'principal@smvec.ac.in',
+    contactPhone: '+91 413 264 3007',
+    website: 'https://smvec.ac.in',
+    status: 'active',
+    brandingConfig: {
+      primaryColor: '#1E3A8A',
+      secondaryColor: '#0D9488',
+      logoUrl: '/assets/smvec-logo.png',
+      portalTitle: 'InternPulse SMVEC',
+    },
+    institutionalSettings: {
+      defaultShiftStart: '09:00:00',
+      defaultShiftEnd: '17:00:00',
+      requiredDailyHours: 8.0,
+      verificationWindowsPerDay: 5,
+      windowDurationMinutes: 15,
+      complianceThresholdPercentage: 75.0,
+      geofenceDefaultRadiusMeters: 150.0,
+    },
+    dpdpComplianceConfig: {
+      dpoName: 'Dr. S. Radhakrishnan',
+      dpoDesignation: 'Institutional Data Protection Officer',
+      dpoEmail: 'grievance.dpo@smvec.ac.in',
+      dpoAddress: 'Sri Manakula Vinayagar Engineering College, Madagadipet, Puducherry - 605 107',
+      noticeVersion: '2026.1-DPDP',
+    },
+    createdAt: '2026-01-01T00:00:00Z',
+    updatedAt: '2026-11-06T00:00:00Z',
+  },
+  {
+    id: 'a0000000-0000-0000-0000-000000000002',
+    code: 'SMVMCH',
+    name: 'Sri Manakula Vinayagar Medical College and Hospital',
+    shortName: 'SMVMCH',
+    domain: 'smvmch.ac.in',
+    subdomain: 'smvmch',
+    address: 'Kalitheerthalkuppam, Madagadipet, Puducherry - 605 107',
+    city: 'Puducherry',
+    state: 'Puducherry',
+    country: 'India',
+    contactEmail: 'dean@smvmch.ac.in',
+    contactPhone: '+91 413 264 3000',
+    website: 'https://smvmch.ac.in',
+    status: 'active',
+    brandingConfig: {
+      primaryColor: '#065F46',
+      secondaryColor: '#0284C7',
+      logoUrl: '/assets/smvmch-logo.png',
+      portalTitle: 'InternPulse SMVMCH',
+    },
+    institutionalSettings: {
+      defaultShiftStart: '08:00:00',
+      defaultShiftEnd: '16:00:00',
+      requiredDailyHours: 8.0,
+      verificationWindowsPerDay: 4,
+      windowDurationMinutes: 15,
+      complianceThresholdPercentage: 85.0,
+      geofenceDefaultRadiusMeters: 200.0,
+    },
+    dpdpComplianceConfig: {
+      dpoName: 'Dr. K. Rajagopal',
+      dpoDesignation: 'Hospital Medical Superintendent & DPO',
+      dpoEmail: 'dpo.medical@smvmch.ac.in',
+      dpoAddress: 'SMVMCH Campus, Kalitheerthalkuppam, Puducherry - 605 107',
+      noticeVersion: '2026.1-MED-DPDP',
+    },
+    createdAt: '2026-11-01T00:00:00Z',
+    updatedAt: '2026-11-06T00:00:00Z',
+  },
+];
+
+export const INITIAL_REGISTRATION_REQUESTS: InstitutionRegistrationRequestRecord[] = [
+  {
+    id: 'req-00000000-0000-0000-0000-000000000001',
+    institutionName: 'Sri Manakula Vinayagar Medical College and Hospital',
+    institutionCode: 'SMVMCH',
+    institutionType: 'medical',
+    domain: 'smvmch.ac.in',
+    address: 'Kalitheerthalkuppam, Madagadipet',
+    city: 'Puducherry',
+    state: 'Puducherry',
+    country: 'India',
+    postalCode: '605107',
+    contactEmail: 'dean@smvmch.ac.in',
+    contactPhone: '+91 413 264 3000',
+    website: 'https://smvmch.ac.in',
+    adminName: 'Dr. SMVMCH Dean',
+    adminEmail: 'dean@smvmch.ac.in',
+    adminPhone: '+91 413 264 3001',
+    adminDesignation: 'Dean & Medical Superintendent',
+    status: 'approved',
+    reviewedById: 'sysops-root-01',
+    reviewedByName: 'Platform Operator Root',
+    reviewedAt: '2026-11-01T10:00:00Z',
+    provisioningStatus: 'provisioned',
+    provisionedInstitutionId: 'a0000000-0000-0000-0000-000000000002',
+    createdAt: '2026-11-01T09:00:00Z',
+    updatedAt: '2026-11-01T10:00:00Z',
+  },
+  {
+    id: 'req-00000000-0000-0000-0000-000000000002',
+    institutionName: 'Pondicherry Engineering College',
+    institutionCode: 'PEC',
+    institutionType: 'engineering',
+    domain: 'pec.edu',
+    address: 'Pillaichavady, East Coast Road',
+    city: 'Puducherry',
+    state: 'Puducherry',
+    country: 'India',
+    postalCode: '605014',
+    contactEmail: 'principal@pec.edu',
+    contactPhone: '+91 413 265 5281',
+    website: 'https://pec.edu',
+    adminName: 'Dr. R. Elansezhian',
+    adminEmail: 'principal@pec.edu',
+    adminPhone: '+91 413 265 5282',
+    adminDesignation: 'Principal & Head of Institution',
+    status: 'pending',
+    provisioningStatus: 'unprovisioned',
+    createdAt: '2026-11-06T08:00:00Z',
+    updatedAt: '2026-11-06T08:00:00Z',
+  },
+];
+
+export const INITIAL_PLATFORM_AUDIT_LOGS: PlatformAuditLogRecord[] = [
+  {
+    id: 'p-audit-001',
+    action: 'REGISTRATION_REQUEST_APPROVED',
+    performedById: 'sysops-root-01',
+    performedByName: 'Platform Operator Root',
+    performedByRole: 'platform_super_admin',
+    targetInstitutionId: 'a0000000-0000-0000-0000-000000000002',
+    targetInstitutionCode: 'SMVMCH',
+    details: {
+      institutionName: 'Sri Manakula Vinayagar Medical College and Hospital',
+      domain: 'smvmch.ac.in',
+      adminEmail: 'dean@smvmch.ac.in',
+    },
+    createdAt: '2026-11-01T10:00:00Z',
+  },
+  {
+    id: 'p-audit-002',
+    action: 'INSTITUTION_PROVISIONED',
+    performedById: 'sysops-root-01',
+    performedByName: 'Platform Operator Root',
+    performedByRole: 'platform_super_admin',
+    targetInstitutionId: 'a0000000-0000-0000-0000-000000000002',
+    targetInstitutionCode: 'SMVMCH',
+    details: {
+      departmentsInitialized: ['COMM_MED', 'GEN_MED'],
+      status: 'active',
+    },
+    createdAt: '2026-11-01T10:05:00Z',
+  },
+];
+
+export function canonicalizeInstitutionId(id?: string): string {
+  if (!id) return 'a0000000-0000-0000-0000-000000000001';
+  const clean = id.trim().toLowerCase();
+  if (clean === 'inst-smvec-001' || clean === 'smvec' || clean === 'a0000000-0000-0000-0000-000000000001') {
+    return 'a0000000-0000-0000-0000-000000000001';
+  }
+  if (clean === 'inst-smvmch-002' || clean === 'smvmch' || clean === 'a0000000-0000-0000-0000-000000000002') {
+    return 'a0000000-0000-0000-0000-000000000002';
+  }
+  return clean;
+}
+
+export const DEFAULT_DEPARTMENTS: DepartmentRecord[] = [
+  {
+    id: 'b0000000-0000-0000-0000-000000000001',
+    institutionId: 'a0000000-0000-0000-0000-000000000001',
+    code: 'CSEBS',
+    name: 'Computer Science & Business Systems',
+    hodId: 'hod-csebs-01',
+    hodName: 'Dr. V. Gomathi',
+    academicHeadName: 'Dr. V. Gomathi',
+    status: 'active',
+    isPilotAuthorized: true,
+    maxStudentCapacity: 60,
+    contactEmail: 'hod.csebs@smvec.ac.in',
+    contactPhone: '+91 413 264 3007',
+    description: 'Department of Computer Science & Business Systems (AICTE-TCS Joint Program)',
+    defaultMonitoringStartTime: '09:00:00',
+    defaultMonitoringEndTime: '17:00:00',
+  },
+  {
+    id: 'b0000000-0000-0000-0000-000000000002',
+    institutionId: 'a0000000-0000-0000-0000-000000000001',
+    code: 'IT',
+    name: 'Information Technology',
+    hodId: 'hod-it-01',
+    hodName: 'Dr. M. Auxilia',
+    academicHeadName: 'Dr. M. Auxilia',
+    status: 'active',
+    isPilotAuthorized: false,
+    maxStudentCapacity: 120,
+    contactEmail: 'hod.it@smvec.ac.in',
+    contactPhone: '+91 413 264 3008',
+    description: 'Department of Information Technology',
+    defaultMonitoringStartTime: '09:00:00',
+    defaultMonitoringEndTime: '17:30:00',
+  },
+  {
+    id: 'b0000000-0000-0000-0000-000000000003',
+    institutionId: 'a0000000-0000-0000-0000-000000000001',
+    code: 'CSE',
+    name: 'Computer Science & Engineering',
+    status: 'active',
+    isPilotAuthorized: false,
+    maxStudentCapacity: 180,
+    contactEmail: 'hod.cse@smvec.ac.in',
+  },
+  {
+    id: 'b0000000-0000-0000-0000-000000000004',
+    institutionId: 'a0000000-0000-0000-0000-000000000001',
+    code: 'ECE',
+    name: 'Electronics & Communication Engineering',
+    status: 'active',
+    isPilotAuthorized: false,
+    maxStudentCapacity: 180,
+    contactEmail: 'hod.ece@smvec.ac.in',
+  },
+  {
+    id: 'b0000000-0000-0000-0000-000000000005',
+    institutionId: 'a0000000-0000-0000-0000-000000000001',
+    code: 'EEE',
+    name: 'Electrical & Electronics Engineering',
+    status: 'active',
+    isPilotAuthorized: false,
+    maxStudentCapacity: 120,
+    contactEmail: 'hod.eee@smvec.ac.in',
+  },
+  {
+    id: 'b0000000-0000-0000-0000-000000000006',
+    institutionId: 'a0000000-0000-0000-0000-000000000001',
+    code: 'MECH',
+    name: 'Mechanical Engineering',
+    status: 'active',
+    isPilotAuthorized: false,
+    maxStudentCapacity: 120,
+    contactEmail: 'hod.mech@smvec.ac.in',
+  },
+  {
+    id: 'b0000000-0000-0000-0000-000000000007',
+    institutionId: 'a0000000-0000-0000-0000-000000000001',
+    code: 'CIVIL',
+    name: 'Civil Engineering',
+    status: 'active',
+    isPilotAuthorized: false,
+    maxStudentCapacity: 60,
+    contactEmail: 'hod.civil@smvec.ac.in',
+  },
+  {
+    id: 'b0000000-0000-0000-0000-000000000008',
+    institutionId: 'a0000000-0000-0000-0000-000000000001',
+    code: 'BME',
+    name: 'Biomedical Engineering',
+    status: 'active',
+    isPilotAuthorized: false,
+    maxStudentCapacity: 60,
+    contactEmail: 'hod.bme@smvec.ac.in',
+  },
+  {
+    id: 'b0000000-0000-0000-0000-000000000009',
+    institutionId: 'a0000000-0000-0000-0000-000000000001',
+    code: 'MECT',
+    name: 'Mechatronics Engineering',
+    status: 'active',
+    isPilotAuthorized: false,
+    maxStudentCapacity: 60,
+    contactEmail: 'hod.mect@smvec.ac.in',
+  },
+  {
+    id: 'b0000000-0000-0000-0000-000000000010',
+    institutionId: 'a0000000-0000-0000-0000-000000000001',
+    code: 'ICE',
+    name: 'Instrumentation & Control Engineering',
+    status: 'active',
+    isPilotAuthorized: false,
+    maxStudentCapacity: 60,
+    contactEmail: 'hod.ice@smvec.ac.in',
   },
 ];
 
@@ -418,6 +1187,8 @@ export const DEFAULT_ATTENDANCE_SESSIONS: AttendanceSessionRecord[] = [
 
 export interface InternshipAssignmentRecord {
   id: string;
+  institutionId?: string;
+  institutionCode?: string;
   studentId: string; // Register Number or UUID
   studentName: string;
   departmentCode: string;
@@ -443,7 +1214,60 @@ export interface InternshipAssignmentRecord {
   assignedTimestamp: string; // ISO 8601
   assignedBy: string; // Mentor / HOD ID
   notes?: string;
+  batchId?: string;
+  batchName?: string;
 }
+
+export const DEFAULT_INTERNSHIP_BATCHES: InternshipBatchRecord[] = [
+  {
+    id: 'batch-csebs-2026-even',
+    departmentCode: 'CSEBS',
+    batchName: '2026 Even Semester Internship Batch A',
+    academicYear: '3rd Year',
+    termCode: 'EVEN',
+    semester: 6,
+    startDate: '2026-01-05',
+    endDate: '2026-06-30',
+    status: 'active',
+    maxCapacity: 60,
+    enrolledStudentCount: 3,
+    createdById: 'HOD_CSEBS',
+    createdAt: '2026-01-01T00:00:00Z',
+    updatedAt: '2026-01-01T00:00:00Z',
+  },
+  {
+    id: 'batch-it-2026-even',
+    departmentCode: 'IT',
+    batchName: '2026 Even Semester Internship Cohort 1',
+    academicYear: '3rd Year',
+    termCode: 'EVEN',
+    semester: 6,
+    startDate: '2026-01-05',
+    endDate: '2026-06-30',
+    status: 'active',
+    maxCapacity: 60,
+    enrolledStudentCount: 2,
+    createdById: 'HOD_IT',
+    createdAt: '2026-01-01T00:00:00Z',
+    updatedAt: '2026-01-01T00:00:00Z',
+  },
+  {
+    id: 'batch-ece-2026-even',
+    departmentCode: 'ECE',
+    batchName: '2026 Core Embedded Systems Batch',
+    academicYear: '3rd Year',
+    termCode: 'EVEN',
+    semester: 6,
+    startDate: '2026-01-10',
+    endDate: '2026-06-30',
+    status: 'active',
+    maxCapacity: 60,
+    enrolledStudentCount: 1,
+    createdById: 'HOD_ECE',
+    createdAt: '2026-01-01T00:00:00Z',
+    updatedAt: '2026-01-01T00:00:00Z',
+  },
+];
 
 export const DEFAULT_ASSIGNMENTS: InternshipAssignmentRecord[] = [
   {

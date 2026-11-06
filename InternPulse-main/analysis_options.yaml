@@ -1,0 +1,30 @@
+# InternPulse Static Analysis & Linter Configuration
+# Conforms to flutter_lints standard rules for production Flutter apps
+
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  language:
+    strict-casts: false
+    strict-inference: false
+    strict-raw-types: false
+  errors:
+    missing_required_param: error
+    missing_return: error
+    duplicate_import: error
+    unused_import: warning
+    dead_code: warning
+
+linter:
+  rules:
+    avoid_print: true
+    prefer_const_constructors: true
+    prefer_const_declarations: true
+    unnecessary_new: true
+    unnecessary_const: true
+    prefer_final_fields: true
+    prefer_is_empty: true
+    prefer_is_not_empty: true
+    prefer_iterable_whereType: true
+    valid_regexps: true
+

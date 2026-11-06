@@ -50,11 +50,18 @@
 
 	<!-- Location Geofencing Permissions for Internship Compliance -->
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>InternPulse requires access to your location while in use to verify your physical presence at the approved internship geofence facility.</string>
+	<string>InternPulse requires access to your location while in use to verify your physical presence at the approved internship geofence facility during scheduled work hours.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>InternPulse requires background location access during authorized monitoring schedules to confirm active attendance at the workplace.</string>
+	<string>InternPulse requires location access during authorized monitoring schedules to confirm active attendance at the workplace. Continued use of GPS running in the background can decrease battery life; location queries are strictly deactivated outside authorized internship shifts.</string>
 	<key>NSLocationAlwaysUsageDescription</key>
-	<string>InternPulse monitors your location relative to the approved workplace geofence radius to automate attendance verification.</string>
+	<string>InternPulse monitors your location relative to the approved workplace geofence radius during authorized work hours to automate attendance verification.</string>
+
+	<!-- iOS Background Execution Modes for Authorized Monitoring -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>location</string>
+		<string>fetch</string>
+	</array>
 
 	<!-- Supabase Auth Deep Link URL Scheme -->
 	<key>CFBundleURLTypes</key>

@@ -2,11 +2,18 @@
     package="com.smvec.internpulse">
 
     <!-- Permissions required for InternPulse Backend & Geofence Verification -->
+    <!-- SEC-08 REMEDIATION: Google Play Compliance Documentation -->
+    <!-- Location telemetry is collected EXCLUSIVELY during active internship monitoring shifts -->
+    <!-- Prominent in-app disclosure dialog precedes all runtime location permission prompts -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    <!-- Note: Battery optimization exemption is restricted to managed institutional enterprise distributions -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
     <application
         android:label="InternPulse"
@@ -42,9 +49,15 @@
             </intent-filter>
         </activity>
 
+        <!-- Foreground Service for Authorized Geofence Verification During Work Hours -->
+        <service
+            android:name="com.smvec.internpulse.GeolocationForegroundService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="location" />
+
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
     </application>
 </manifest>
-

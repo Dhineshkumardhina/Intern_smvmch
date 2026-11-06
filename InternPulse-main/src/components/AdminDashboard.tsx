@@ -14,10 +14,15 @@ import {
   CheckCircle2, 
   Clock, 
   Plus, 
-  Filter
+  Filter,
+  Upload
 } from 'lucide-react';
 import { StudentRecord } from '../data/initialData';
 import { AuthUser } from '../core/auth/authUser';
+import { internshipRepository } from '../core/repository/internshipRepository';
+import { StudentBulkImportModal } from './onboarding/StudentBulkImportModal';
+import { InstitutionalReportExportModal } from './analytics/InstitutionalReportExportModal';
+import { institutionalAnalyticsService } from '../core/analytics/institutionalAnalyticsService';
 
 interface AdminDashboardProps {
   currentUser: AuthUser;
@@ -95,6 +100,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       return true;
     });
   }, [students, filterDept, filterYear, searchQuery]);
+
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+
+  const multiDeptStats = useMemo(() => {
+    return internshipRepository.getMultiDepartmentInternshipStats(currentUser);
+  }, [currentUser, students]);
 
   const handleAssignMentor = (e: React.FormEvent) => {
     e.preventDefault();
@@ -289,6 +301,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               </h3>
 
               <button
+                onClick={() => setIsImportModalOpen(true)}
+                className="w-full p-3 rounded-xl border border-[#24389C] bg-[#DEE0FF]/30 hover:bg-[#DEE0FF]/60 text-[#00105C] text-xs font-bold flex items-center justify-between transition-all shadow-xs"
+              >
+                <div className="flex items-center space-x-2">
+                  <Upload className="w-4 h-4 text-[#24389C]" />
+                  <span>Bulk Onboard Students (CSV / XLSX)</span>
+                </div>
+                <span className="text-[#24389C] text-[11px] font-bold">Import</span>
+              </button>
+
+              <button
                 onClick={handleExportCsv}
                 className="w-full p-3 rounded-xl border border-[#E3E1EA] hover:border-[#24389C] text-[#1A1B22] text-xs font-semibold flex items-center justify-between transition-all bg-[#FBF8FF]"
               >
@@ -297,6 +320,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   <span>Export Complete Institutional CSV</span>
                 </div>
                 <span className="text-[#57657A] text-[11px]">.csv</span>
+              </button>
+
+              <button
+                onClick={() => setIsExportModalOpen(true)}
+                className="w-full p-3 rounded-xl border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 text-xs font-bold flex items-center justify-between transition-all shadow-xs"
+              >
+                <div className="flex items-center space-x-2">
+                  <FileSpreadsheet className="w-4 h-4 text-emerald-700" />
+                  <span>Institutional Analytics Exporter</span>
+                </div>
+                <span className="text-emerald-700 text-[10px] font-bold px-2 py-0.5 bg-emerald-200/60 rounded-md uppercase">PDF • XLSX • CSV</span>
               </button>
 
               <div className="p-4 bg-indigo-50 border border-indigo-100 rounded-xl space-y-2">
@@ -355,13 +389,23 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               </select>
             </div>
 
-            <button
-              onClick={handleExportCsv}
-              className="px-3.5 py-2 rounded-xl bg-[#24389C] text-white text-xs font-semibold flex items-center space-x-1.5 hover:bg-[#1E2E80]"
-            >
-              <Download className="w-3.5 h-3.5" />
-              <span>Export Filtered ({filteredStudents.length})</span>
-            </button>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => setIsImportModalOpen(true)}
+                className="px-3.5 py-2 rounded-xl bg-white border border-[#E3E1EA] text-[#24389C] text-xs font-semibold flex items-center space-x-1.5 hover:bg-[#DEE0FF]/40 shadow-xs transition-all"
+              >
+                <Upload className="w-3.5 h-3.5" />
+                <span>Bulk Import (CSV / XLSX)</span>
+              </button>
+
+              <button
+                onClick={handleExportCsv}
+                className="px-3.5 py-2 rounded-xl bg-[#24389C] text-white text-xs font-semibold flex items-center space-x-1.5 hover:bg-[#1E2E80]"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Export Filtered ({filteredStudents.length})</span>
+              </button>
+            </div>
           </div>
 
           <div className="bg-white rounded-2xl border border-[#E3E1EA] shadow-sm overflow-x-auto">
@@ -466,26 +510,70 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
       {/* TAB 4: DEPARTMENTS */}
       {adminTab === 'departments' && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          {DEPARTMENTS.map((dept) => {
-            const count = students.filter((s) => s.dept.toUpperCase() === dept.code.toUpperCase()).length;
-            return (
-              <div key={dept.code} className="bg-white p-5 rounded-2xl border border-[#E3E1EA] shadow-sm space-y-3">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <span className="font-bold text-lg text-[#24389C]">{dept.code}</span>
-                    <h4 className="font-semibold text-xs text-[#1A1B22] mt-0.5">{dept.name}</h4>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="font-bold text-sm text-[#1A1B22]">Institutional Department Governance & Cohort Metrics</h3>
+            <span className="text-xs text-[#57657A] bg-[#EFEDF6] px-3 py-1 rounded-lg">
+              {multiDeptStats.length} Registered Departments
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {multiDeptStats.map((dept) => {
+              return (
+                <div key={dept.code} className="bg-white p-5 rounded-2xl border border-[#E3E1EA] shadow-sm space-y-3">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <div className="flex items-center space-x-2">
+                        <span className="font-bold text-lg text-[#24389C]">{dept.code}</span>
+                        <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border ${
+                          dept.status === 'active' 
+                            ? 'bg-emerald-50 text-emerald-800 border-emerald-200' 
+                            : 'bg-slate-100 text-slate-700 border-slate-300'
+                        }`}>
+                          {dept.status}
+                        </span>
+                        {dept.isPilotAuthorized && (
+                          <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-800 border border-indigo-200">
+                            Pilot
+                          </span>
+                        )}
+                      </div>
+                      <h4 className="font-semibold text-xs text-[#1A1B22] mt-0.5">{dept.name}</h4>
+                    </div>
+                    <span className="px-2.5 py-1 rounded-lg bg-[#DEE0FF] text-[#00105C] font-bold text-xs">
+                      {dept.totalStudents} Interns
+                    </span>
                   </div>
-                  <span className="px-2.5 py-1 rounded-lg bg-[#DEE0FF] text-[#00105C] font-bold text-xs">
-                    {count} Interns
-                  </span>
+
+                  <div className="grid grid-cols-2 gap-2 pt-2 border-t border-[#E3E1EA] text-xs">
+                    <div className="p-2 bg-[#FBF8FF] rounded-lg border border-[#E3E1EA]">
+                      <span className="text-[10px] text-[#57657A] block">Active Placements:</span>
+                      <strong className="text-emerald-700">{dept.activeInternships}</strong>
+                    </div>
+                    <div className="p-2 bg-[#FBF8FF] rounded-lg border border-[#E3E1EA]">
+                      <span className="text-[10px] text-[#57657A] block">Completed:</span>
+                      <strong className="text-teal-700">{dept.completedInternships}</strong>
+                    </div>
+                    <div className="p-2 bg-[#FBF8FF] rounded-lg border border-[#E3E1EA]">
+                      <span className="text-[10px] text-[#57657A] block">At Risk / Blocked:</span>
+                      <strong className="text-rose-700">{dept.atRiskInternships}</strong>
+                    </div>
+                    <div className="p-2 bg-[#FBF8FF] rounded-lg border border-[#E3E1EA]">
+                      <span className="text-[10px] text-[#57657A] block">Active Batches:</span>
+                      <strong className="text-indigo-700">{dept.activeBatches}</strong>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs pt-2 border-t border-[#E3E1EA] text-[#57657A]">
+                    <span>Mentors: <strong>{dept.activeMentors}</strong></span>
+                    <span>Locations: <strong>{dept.approvedLocations}</strong></span>
+                    <span>Attendance: <strong className="text-emerald-700">{dept.attendanceRate}%</strong></span>
+                  </div>
                 </div>
-                <div className="text-xs text-[#57657A] pt-2 border-t border-[#E3E1EA]">
-                  <span>HOD: <strong>{dept.hod}</strong></span>
-                </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
       )}
 
@@ -526,47 +614,102 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
       {/* TAB 6: REPORTS */}
       {adminTab === 'reports' && (
-        <div className="bg-white rounded-2xl p-6 border border-[#E3E1EA] shadow-sm space-y-4">
-          <h3 className="font-bold text-base text-[#1A1B22]">Institutional Compliance & AICTE/NAAC Reports</h3>
-          <p className="text-xs text-[#57657A]">
-            Generate and export comprehensive audit summaries for Sri Manakula Vinayagar Engineering College accreditation bodies.
-          </p>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-            <div className="p-4 rounded-xl border border-[#E3E1EA] bg-[#FBF8FF] flex items-center justify-between">
+        <div className="space-y-6">
+          <div className="bg-white rounded-2xl p-6 border border-[#E3E1EA] shadow-sm space-y-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
-                <h4 className="font-bold text-xs text-[#1A1B22]">Full Student Internship Ledger</h4>
-                <p className="text-[11px] text-[#57657A]">Complete roster of student IDs, mentors, and progress</p>
+                <h3 className="font-bold text-base text-[#1A1B22]">Institutional Compliance & AICTE/NAAC Reports</h3>
+                <p className="text-xs text-[#57657A]">
+                  Generate and export comprehensive audit summaries for Sri Manakula Vinayagar Engineering College accreditation bodies.
+                </p>
               </div>
               <button
-                onClick={handleExportCsv}
-                className="px-3 py-1.5 rounded-lg bg-[#24389C] text-white text-xs font-semibold hover:bg-[#1E2E80]"
+                onClick={() => setIsExportModalOpen(true)}
+                className="px-4 py-2 rounded-xl bg-[#24389C] text-white text-xs font-bold hover:bg-[#1E2E80] transition shadow-xs flex items-center space-x-2 shrink-0"
               >
-                Download CSV
+                <Download className="w-4 h-4" />
+                <span>Launch Report Exporter (PDF • XLSX • CSV)</span>
               </button>
             </div>
 
-            <div className="p-4 rounded-xl border border-[#E3E1EA] bg-[#FBF8FF] flex items-center justify-between">
-              <div>
-                <h4 className="font-bold text-xs text-[#1A1B22]">At-Risk Students Action Memo</h4>
-                <p className="text-[11px] text-[#57657A]">Filtered summary of blocked & inactive student cases</p>
+            {/* Quick Export Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+              <div className="p-4 rounded-xl border border-[#E3E1EA] bg-[#FBF8FF] flex items-center justify-between">
+                <div>
+                  <h4 className="font-bold text-xs text-[#1A1B22]">Full Student Internship Ledger</h4>
+                  <p className="text-[11px] text-[#57657A]">Complete roster of student IDs, mentors, and progress</p>
+                </div>
+                <button
+                  onClick={handleExportCsv}
+                  className="px-3 py-1.5 rounded-lg bg-[#24389C] text-white text-xs font-semibold hover:bg-[#1E2E80]"
+                >
+                  Download CSV
+                </button>
               </div>
-              <button
-                onClick={() => {
-                  const blocked = students.filter((s) => s.status === 'blocked' || s.status === 'inactive');
-                  const rows = blocked.map((s) => `"${s.studentId}","${s.studentName}","${s.dept}","${s.mentor}","${s.blocker || 'Inactive'}"`);
-                  const csv = ['Student ID,Name,Dept,Mentor,Blocker', ...rows].join('\n');
-                  const blob = new Blob([csv], { type: 'text/csv' });
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement('a');
-                  a.href = url;
-                  a.download = 'SMVEC_AtRisk_Students_Report.csv';
-                  a.click();
-                }}
-                className="px-3 py-1.5 rounded-lg bg-rose-600 text-white text-xs font-semibold hover:bg-rose-700"
-              >
-                Export At-Risk
-              </button>
+
+              <div className="p-4 rounded-xl border border-[#E3E1EA] bg-[#FBF8FF] flex items-center justify-between">
+                <div>
+                  <h4 className="font-bold text-xs text-[#1A1B22]">At-Risk Students Action Memo</h4>
+                  <p className="text-[11px] text-[#57657A]">Filtered summary of blocked & inactive student cases</p>
+                </div>
+                <button
+                  onClick={() => {
+                    const blocked = students.filter((s) => s.status === 'blocked' || s.status === 'inactive');
+                    const rows = blocked.map((s) => `"${s.studentId}","${s.studentName}","${s.dept}","${s.mentor}","${s.blocker || 'Inactive'}"`);
+                    const csv = ['Student ID,Name,Dept,Mentor,Blocker', ...rows].join('\n');
+                    const blob = new Blob([csv], { type: 'text/csv' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'SMVEC_AtRisk_Students_Report.csv';
+                    a.click();
+                  }}
+                  className="px-3 py-1.5 rounded-lg bg-rose-600 text-white text-xs font-semibold hover:bg-rose-700"
+                >
+                  Export At-Risk
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Verification Outcomes & Telemetry Compliance Overview */}
+          <div className="bg-white rounded-2xl p-6 border border-[#E3E1EA] shadow-sm space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="font-bold text-sm text-[#1A1B22] flex items-center space-x-2">
+                  <ShieldCheck className="w-4 h-4 text-[#24389C]" />
+                  <span>Workplace Geofence Verification Integrity Breakdown</span>
+                </h4>
+                <p className="text-[11px] text-[#57657A]">
+                  Canonical distinction of evaluation outcomes across all departments (Strict Non-Fabrication Standard)
+                </p>
+              </div>
+              <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-full">
+                Active Policy Enforced
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+              <div className="p-3 bg-emerald-50/60 border border-emerald-200 rounded-xl">
+                <span className="text-[11px] font-bold text-emerald-800">Within Geofence</span>
+                <p className="text-lg font-black text-emerald-900 mt-1">100% Verified</p>
+                <span className="text-[10px] text-emerald-700">Valid GPS Workplace Session</span>
+              </div>
+              <div className="p-3 bg-rose-50/60 border border-rose-200 rounded-xl">
+                <span className="text-[11px] font-bold text-rose-800">Outside Geofence</span>
+                <p className="text-lg font-black text-rose-900 mt-1">Isolated</p>
+                <span className="text-[10px] text-rose-700">Confirmed Geofence Breach</span>
+              </div>
+              <div className="p-3 bg-amber-50/60 border border-amber-200 rounded-xl">
+                <span className="text-[11px] font-bold text-amber-800">Technical Exceptions</span>
+                <p className="text-lg font-black text-amber-900 mt-1">Classified</p>
+                <span className="text-[10px] text-amber-700">GPS / Network Unavailable</span>
+              </div>
+              <div className="p-3 bg-indigo-50/60 border border-indigo-200 rounded-xl">
+                <span className="text-[11px] font-bold text-indigo-800">Scheduled Checks</span>
+                <p className="text-lg font-black text-indigo-900 mt-1">Active</p>
+                <span className="text-[10px] text-indigo-700">Randomized Windows</span>
+              </div>
             </div>
           </div>
         </div>
@@ -623,6 +766,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         </div>
       )}
 
+      {/* Phase 17D: Student Bulk Import Modal */}
+      <StudentBulkImportModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        currentUser={currentUser}
+        onImportComplete={() => {
+          onUpdateStudents(internshipRepository.getAllStudents());
+        }}
+      />
+
+      {/* Phase 17E: Institutional Report Exporter Modal */}
+      <InstitutionalReportExportModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        currentUser={currentUser}
+      />
     </div>
   );
 };

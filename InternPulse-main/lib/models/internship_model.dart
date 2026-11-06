@@ -1,7 +1,5 @@
 import '../core/constants/status_constants.dart';
 
-import '../core/constants/status_constants.dart';
-
 class InternshipModel {
   final String id;
   final String studentId;

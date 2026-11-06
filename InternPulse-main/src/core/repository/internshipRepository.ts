@@ -2,13 +2,22 @@ import {
   StudentRecord, 
   MentorRecord, 
   HodRecord,
+  DepartmentRecord,
   AttendanceSessionRecord,
   InternshipAssignmentRecord,
+  InternshipBatchRecord,
+  StudentTransferRecord,
+  InternshipProviderRecord,
+  InstitutionRecord,
   DEFAULT_STUDENTS,
   DEFAULT_MENTORS,
   DEFAULT_HODS,
+  DEFAULT_DEPARTMENTS,
   DEFAULT_ATTENDANCE_SESSIONS,
-  DEFAULT_ASSIGNMENTS
+  DEFAULT_ASSIGNMENTS,
+  DEFAULT_INTERNSHIP_BATCHES,
+  DEFAULT_INSTITUTIONS,
+  canonicalizeInstitutionId
 } from '../../data/initialData';
 import { 
   getSupabaseClient, 
@@ -24,6 +33,7 @@ import {
   ForbiddenException 
 } from '../auth/rbac/authorizationPolicy';
 import { locationRepository } from './locationRepository';
+import { LicensingEngine } from '../commercial/licensingEngine';
 
 export interface IInternshipRepository {
   // Status
@@ -69,6 +79,8 @@ export interface IInternshipRepository {
     mentorId?: string;
     mentorName?: string;
     notes?: string;
+    batchId?: string;
+    batchName?: string;
   }, caller: AuthUser): Promise<InternshipAssignmentRecord>;
 
   getActiveAssignmentForStudent(studentId: string, caller?: AuthUser): InternshipAssignmentRecord | null;
@@ -78,6 +90,7 @@ export interface IInternshipRepository {
 
   // Attendance Overview & Verification
   getAttendanceSessionsForScope(mentorId: string, mentorDept: string, caller?: AuthUser): AttendanceSessionRecord[];
+  getAllAttendanceSessions(caller?: AuthUser): AttendanceSessionRecord[];
   verifyAttendanceSession(sessionId: string, isVerified: boolean, remarks?: string, caller?: AuthUser): Promise<void>;
 
   // Scoped mentor access
@@ -88,6 +101,123 @@ export interface IInternshipRepository {
   // HOD access
   getAllHods(): HodRecord[];
   getHodByDepartment(departmentCode: string): HodRecord | null;
+
+  // Multi-Institution Management (Phase 18B)
+  getInstitutionById(id: string): InstitutionRecord | null;
+  getInstitutionByCode(code: string): InstitutionRecord | null;
+  getInstitutionByDomain(domain: string): InstitutionRecord | null;
+  getAllInstitutions(caller?: AuthUser): InstitutionRecord[];
+  saveInstitution(institution: InstitutionRecord, caller: AuthUser): Promise<void>;
+
+  // Department Governance & Management (Phase 17B & 17C)
+  getAllDepartments(caller?: AuthUser): DepartmentRecord[];
+  getDepartmentByCode(code: string, caller?: AuthUser): DepartmentRecord | null;
+  createDepartment(dept: { 
+    code: string; 
+    name: string; 
+    institutionId?: string; 
+    hodId?: string; 
+    hodName?: string; 
+    maxStudentCapacity?: number;
+    contactEmail?: string;
+    contactPhone?: string;
+    academicHeadName?: string;
+    description?: string;
+    defaultMonitoringStartTime?: string;
+    defaultMonitoringEndTime?: string;
+  }, caller: AuthUser): Promise<DepartmentRecord>;
+  deactivateDepartment(departmentCode: string, caller: AuthUser): Promise<DepartmentRecord>;
+  reactivateDepartment(departmentCode: string, caller: AuthUser): Promise<DepartmentRecord>;
+  assignDepartmentHod(departmentCode: string, hodId: string, hodName: string, caller: AuthUser): Promise<DepartmentRecord>;
+  updateDepartmentConfig(
+    departmentCode: string, 
+    config: {
+      maxStudentCapacity?: number;
+      contactEmail?: string;
+      contactPhone?: string;
+      academicHeadName?: string;
+      description?: string;
+      defaultMonitoringStartTime?: string;
+      defaultMonitoringEndTime?: string;
+    }, 
+    caller: AuthUser
+  ): Promise<DepartmentRecord>;
+
+  getInstitutionStatistics(caller: AuthUser): {
+    totalDepartments: number;
+    activeDepartments: number;
+    totalStudents: number;
+    totalMentors: number;
+    activeAssignments: number;
+    departmentBreakdown: Array<{ code: string; name: string; studentCount: number; mentorCount: number; status: string }>;
+  };
+  getDepartmentAttendanceSummary(departmentCode: string, caller?: AuthUser): {
+    departmentCode: string;
+    totalStudents: number;
+    totalSessions: number;
+    presentCount: number;
+    absentCount: number;
+    lateCount: number;
+    verifiedCount: number;
+    attendanceRate: number;
+  };
+
+  // Internship Batches (Phase 17C)
+  createInternshipBatch(
+    batchData: {
+      departmentCode: string;
+      batchName: string;
+      academicYear: string;
+      termCode: 'ODD' | 'EVEN' | 'SUMMER';
+      semester: number;
+      startDate: string;
+      endDate: string;
+      maxCapacity?: number;
+    },
+    caller: AuthUser
+  ): Promise<InternshipBatchRecord>;
+  getInternshipBatches(departmentCode?: string, caller?: AuthUser): InternshipBatchRecord[];
+  getInternshipBatchById(batchId: string, caller?: AuthUser): InternshipBatchRecord | null;
+  updateInternshipBatch(batchId: string, updates: Partial<InternshipBatchRecord>, caller: AuthUser): Promise<InternshipBatchRecord>;
+  assignStudentToBatch(studentId: string, batchId: string, caller: AuthUser): Promise<StudentRecord>;
+
+  // Student Transfers (Phase 17C)
+  transferStudentDepartment(studentId: string, targetDepartmentCode: string, reason: string, caller: AuthUser): Promise<StudentRecord>;
+  getStudentTransferHistory(studentId?: string, caller?: AuthUser): StudentTransferRecord[];
+
+  // Providers & Multi-Department Dashboard Analytics (Phase 17C)
+  getInternshipProviders(departmentCode?: string, caller?: AuthUser): InternshipProviderRecord[];
+  getMultiDepartmentInternshipStats(caller?: AuthUser): Array<{
+    code: string;
+    name: string;
+    status: string;
+    isPilotAuthorized: boolean;
+    totalStudents: number;
+    activeInternships: number;
+    completedInternships: number;
+    atRiskInternships: number;
+    unassignedStudents: number;
+    activeMentors: number;
+    approvedLocations: number;
+    activeBatches: number;
+    attendanceRate: number;
+    verificationRate: number;
+  }>;
+  getDepartmentDetailedAnalytics(departmentCode: string, caller?: AuthUser): {
+    departmentCode: string;
+    departmentName: string;
+    status: string;
+    totalStudents: number;
+    activeInternships: number;
+    completedInternships: number;
+    atRiskInternships: number;
+    unassignedStudents: number;
+    activeBatches: number;
+    batches: InternshipBatchRecord[];
+    locationsCount: number;
+    attendanceRate: number;
+    verificationRate: number;
+  };
 
   // Real-time synchronization
   subscribe(listener: () => void): () => void;
@@ -106,6 +236,7 @@ export interface IInternshipRepository {
   ): Promise<StudentRecord>;
   
   saveStudent(student: StudentRecord, caller?: AuthUser): Promise<void>;
+  saveStudentsBatch(students: StudentRecord[], caller?: AuthUser): Promise<void>;
   updateStudentMentor(studentId: string, newMentorId: string, newMentorName: string, caller?: AuthUser): Promise<void>;
   replaceDataset(newStudents: StudentRecord[]): void;
   clearAllDataset(): void;
@@ -115,15 +246,23 @@ export interface IInternshipRepository {
 const STORAGE_KEY = 'internpulse_students_store_v3';
 const MENTORS_STORAGE_KEY = 'internpulse_mentors_store_v3';
 const HODS_STORAGE_KEY = 'internpulse_hods_store_v3';
+const DEPARTMENTS_STORAGE_KEY = 'internpulse_departments_store_v1';
 const ATTENDANCE_STORAGE_KEY = 'internpulse_attendance_store_v1';
 const ASSIGNMENTS_STORAGE_KEY = 'internpulse_assignments_store_v1';
+const BATCHES_STORAGE_KEY = 'internpulse_batches_store_v1';
+const TRANSFERS_STORAGE_KEY = 'internpulse_transfers_store_v1';
+const INSTITUTIONS_STORAGE_KEY = 'internpulse_institutions_store_v1';
 
 class SupabaseIntegratedRepository implements IInternshipRepository {
+  private institutions: InstitutionRecord[] = [...DEFAULT_INSTITUTIONS];
   private students: StudentRecord[] = [];
   private mentors: MentorRecord[] = [];
   private hods: HodRecord[] = [];
+  private departments: DepartmentRecord[] = [];
   private attendanceSessions: AttendanceSessionRecord[] = [];
   private assignments: InternshipAssignmentRecord[] = [];
+  private batches: InternshipBatchRecord[] = [];
+  private transferHistory: StudentTransferRecord[] = [];
   private listeners: Set<() => void> = new Set();
   private isSyncing = false;
   private lastSyncTime: Date | null = null;
@@ -181,6 +320,7 @@ class SupabaseIntegratedRepository implements IInternshipRepository {
   private loadFromStorage(): void {
     try {
       if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
+        this.institutions = [...DEFAULT_INSTITUTIONS];
         this.students = this.normalizeStudentRecords([...DEFAULT_STUDENTS]);
         this.mentors = [...DEFAULT_MENTORS];
         this.hods = [...DEFAULT_HODS];
@@ -188,6 +328,18 @@ class SupabaseIntegratedRepository implements IInternshipRepository {
         this.assignments = [...DEFAULT_ASSIGNMENTS];
         return;
       }
+      const savedInstitutions = localStorage.getItem(INSTITUTIONS_STORAGE_KEY);
+      if (savedInstitutions) {
+        const parsed = JSON.parse(savedInstitutions);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          this.institutions = parsed;
+        } else {
+          this.institutions = [...DEFAULT_INSTITUTIONS];
+        }
+      } else {
+        this.institutions = [...DEFAULT_INSTITUTIONS];
+      }
+
       const savedStudents = localStorage.getItem(STORAGE_KEY);
       if (savedStudents) {
         const parsed = JSON.parse(savedStudents);
@@ -224,6 +376,18 @@ class SupabaseIntegratedRepository implements IInternshipRepository {
         this.hods = [...DEFAULT_HODS];
       }
 
+      const savedDepartments = localStorage.getItem(DEPARTMENTS_STORAGE_KEY);
+      if (savedDepartments) {
+        const parsed = JSON.parse(savedDepartments);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          this.departments = parsed;
+        } else {
+          this.departments = [...DEFAULT_DEPARTMENTS];
+        }
+      } else {
+        this.departments = [...DEFAULT_DEPARTMENTS];
+      }
+
       const savedAttendance = localStorage.getItem(ATTENDANCE_STORAGE_KEY);
       if (savedAttendance) {
         const parsed = JSON.parse(savedAttendance);
@@ -247,13 +411,41 @@ class SupabaseIntegratedRepository implements IInternshipRepository {
       } else {
         this.assignments = [...DEFAULT_ASSIGNMENTS];
       }
+
+      const savedBatches = localStorage.getItem(BATCHES_STORAGE_KEY);
+      if (savedBatches) {
+        const parsed = JSON.parse(savedBatches);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          this.batches = parsed;
+        } else {
+          this.batches = [...DEFAULT_INTERNSHIP_BATCHES];
+        }
+      } else {
+        this.batches = [...DEFAULT_INTERNSHIP_BATCHES];
+      }
+
+      const savedTransfers = localStorage.getItem(TRANSFERS_STORAGE_KEY);
+      if (savedTransfers) {
+        const parsed = JSON.parse(savedTransfers);
+        if (Array.isArray(parsed)) {
+          this.transferHistory = parsed;
+        } else {
+          this.transferHistory = [];
+        }
+      } else {
+        this.transferHistory = [];
+      }
     } catch (e) {
       console.error('Error loading data from localStorage:', e);
+      this.institutions = [...DEFAULT_INSTITUTIONS];
       this.students = this.normalizeStudentRecords([...DEFAULT_STUDENTS]);
       this.mentors = [...DEFAULT_MENTORS];
       this.hods = [...DEFAULT_HODS];
+      this.departments = [...DEFAULT_DEPARTMENTS];
       this.attendanceSessions = [...DEFAULT_ATTENDANCE_SESSIONS];
       this.assignments = [...DEFAULT_ASSIGNMENTS];
+      this.batches = [...DEFAULT_INTERNSHIP_BATCHES];
+      this.transferHistory = [];
     }
   }
 
@@ -262,11 +454,15 @@ class SupabaseIntegratedRepository implements IInternshipRepository {
       const deptCode = (s.department_code || s.departmentCode || s.dept || 'CSEBS').toUpperCase();
       const mentorName = s.mentor_name || s.mentor || 'Faculty Mentor';
       const mentorId = s.mentor_id || s.mentorId || 'MENTOR_001';
+      const instId = canonicalizeInstitutionId(s.institution_id || s.institutionId);
+      const instCode = s.institution_code || s.institutionCode || 'SMVEC';
 
       return {
         id: s.id || s.student_id || s.studentId || `ST_${index + 1}`,
         studentId: s.student_id || s.studentId || s.id || `STUDENT_${index + 1}`,
         studentName: s.student_name || s.studentName || s.name || 'Student Intern',
+        institutionId: instId,
+        institutionCode: instCode,
         email: s.email || `${(s.student_id || s.studentId || 'student').toLowerCase()}@college.edu`,
         phone: s.phone || '+91 98401 00000',
         academicYear: s.academic_year || s.academicYear || s.year || '3rd Year',
@@ -288,6 +484,8 @@ class SupabaseIntegratedRepository implements IInternshipRepository {
         internshipLocationId: s.internship_location_id || s.internshipLocationId || undefined,
         internshipStartDate: s.internship_start_date || s.internshipStartDate || undefined,
         internshipEndDate: s.internship_end_date || s.internshipEndDate || undefined,
+        batchId: s.batch_id || s.batchId || undefined,
+        batchName: s.batch_name || s.batchName || undefined,
       };
     });
   }
@@ -295,11 +493,15 @@ class SupabaseIntegratedRepository implements IInternshipRepository {
   private persistToStorage(): void {
     try {
       if (typeof window === 'undefined' || typeof localStorage === 'undefined') return;
+      localStorage.setItem(INSTITUTIONS_STORAGE_KEY, JSON.stringify(this.institutions));
       localStorage.setItem(STORAGE_KEY, JSON.stringify(this.students));
       localStorage.setItem(MENTORS_STORAGE_KEY, JSON.stringify(this.mentors));
       localStorage.setItem(HODS_STORAGE_KEY, JSON.stringify(this.hods));
+      localStorage.setItem(DEPARTMENTS_STORAGE_KEY, JSON.stringify(this.departments));
       localStorage.setItem(ATTENDANCE_STORAGE_KEY, JSON.stringify(this.attendanceSessions));
       localStorage.setItem(ASSIGNMENTS_STORAGE_KEY, JSON.stringify(this.assignments));
+      localStorage.setItem(BATCHES_STORAGE_KEY, JSON.stringify(this.batches));
+      localStorage.setItem(TRANSFERS_STORAGE_KEY, JSON.stringify(this.transferHistory));
     } catch (e) {
       console.error('Error persisting data to localStorage:', e);
     }
@@ -495,6 +697,14 @@ class SupabaseIntegratedRepository implements IInternshipRepository {
       const sMentorId = (s.mentorId || '').trim().toLowerCase();
       const sMentorName = (s.mentor || '').trim().toLowerCase();
 
+      // Multi-tenant boundary check: Non-platform callers cannot access students from other institutions
+      if (caller && caller.role !== 'platform_super_admin') {
+        const callerInst = canonicalizeInstitutionId(caller.institutionId || caller.college);
+        if (s.institutionId && canonicalizeInstitutionId(s.institutionId) !== callerInst) {
+          return false;
+        }
+      }
+
       // Assigned directly
       if (normMentorId && (sMentorId === normMentorId || (caller && sMentorName === caller.name.trim().toLowerCase()))) {
         return true;
@@ -505,10 +715,17 @@ class SupabaseIntegratedRepository implements IInternshipRepository {
         return true;
       }
 
-      // If caller is HOD / Admin and asked for ALL or specific dept
-      if (caller && (caller.role === 'hod' || caller.role === 'admin')) {
-        if (!normDept || normDept === 'ALL' || sDept === normDept) {
-          return true;
+      // If caller is HOD / Admin / Super Admin and asked for ALL or specific dept
+      if (caller && (caller.role === 'hod' || caller.role === 'admin' || caller.role === 'super_admin')) {
+        if (caller.role === 'hod') {
+          const callerDept = (caller.departmentCode || caller.dept?.split(' ')[0] || '').trim().toUpperCase();
+          if (callerDept && sDept === callerDept) {
+            return true;
+          }
+        } else {
+          if (!normDept || normDept === 'ALL' || sDept === normDept) {
+            return true;
+          }
         }
       }
 
@@ -523,23 +740,44 @@ class SupabaseIntegratedRepository implements IInternshipRepository {
     if (caller !== undefined) {
       AuthorizationPolicy.validateIdentity(caller);
       AuthorizationPolicy.validateHodScope(caller, departmentCode);
+      const deptRecord = this.departments.find(d => d.code.toUpperCase() === departmentCode.trim().toUpperCase());
+      if (deptRecord) {
+        AuthorizationPolicy.validateDepartmentActive(deptRecord, caller);
+      }
     }
     if (!departmentCode) return [];
     const dept = departmentCode.trim().toUpperCase();
-    return this.students.filter(s => 
+    let list = this.students.filter(s => 
       s.departmentCode.toUpperCase() === dept || 
       s.dept.toUpperCase() === dept
     );
+    if (caller && caller.role !== 'platform_super_admin') {
+      const callerInst = canonicalizeInstitutionId(caller.institutionId || caller.college);
+      list = list.filter(s => !s.institutionId || canonicalizeInstitutionId(s.institutionId) === callerInst);
+    }
+    return list;
   }
 
-  public getMentorsForHod(departmentCode: string): MentorRecord[] {
+  public getMentorsForHod(departmentCode: string, caller?: AuthUser): MentorRecord[] {
+    if (caller !== undefined) {
+      AuthorizationPolicy.validateIdentity(caller);
+      AuthorizationPolicy.validateHodScope(caller, departmentCode);
+      const deptRecord = this.departments.find(d => d.code.toUpperCase() === departmentCode.trim().toUpperCase());
+      if (deptRecord) {
+        AuthorizationPolicy.validateDepartmentActive(deptRecord, caller);
+      }
+    }
     const dept = (departmentCode || 'CSEBS').trim().toUpperCase();
     
     // Filter mentors belonging to this department
-    const deptMentors = this.mentors.filter(m => 
+    let deptMentors = this.mentors.filter(m => 
       m.departmentCode.toUpperCase() === dept || 
-      m.departmentCodes.some(d => d.toUpperCase() === dept)
+      (m.departmentCodes && m.departmentCodes.some(d => d.toUpperCase() === dept))
     );
+    if (caller && caller.role !== 'platform_super_admin') {
+      const callerInst = canonicalizeInstitutionId(caller.institutionId || caller.college);
+      deptMentors = deptMentors.filter(m => !m.institutionId || canonicalizeInstitutionId(m.institutionId) === callerInst);
+    }
 
     // Calculate live analytics based on Supabase students
     return deptMentors.map(mentor => {
@@ -597,18 +835,1127 @@ class SupabaseIntegratedRepository implements IInternshipRepository {
   }
 
   // ====================================================
+  // 4A. MULTI-INSTITUTION MANAGEMENT (PHASE 18B)
+  // ====================================================
+  public getInstitutionById(id: string): InstitutionRecord | null {
+    if (!id) return null;
+    const cleanId = id.trim().toLowerCase();
+    return this.institutions.find(i => i.id.toLowerCase() === cleanId) || null;
+  }
+
+  public getInstitutionByCode(code: string): InstitutionRecord | null {
+    if (!code) return null;
+    const cleanCode = code.trim().toUpperCase();
+    return this.institutions.find(i => i.code.toUpperCase() === cleanCode) || null;
+  }
+
+  public getInstitutionByDomain(domain: string): InstitutionRecord | null {
+    if (!domain) return null;
+    const cleanDomain = domain.trim().toLowerCase();
+    return this.institutions.find(i => i.domain.toLowerCase() === cleanDomain) || null;
+  }
+
+  public getAllInstitutions(caller?: AuthUser): InstitutionRecord[] {
+    if (caller !== undefined) {
+      AuthorizationPolicy.validateIdentity(caller);
+      const isPlatformOp = AuthorizationPolicy.isPlatformAdmin(caller);
+      if (!isPlatformOp && caller.institutionId) {
+        return this.institutions.filter(i => i.id === caller.institutionId || i.code === caller.institutionCode);
+      }
+    }
+    return [...this.institutions];
+  }
+
+  public async saveInstitution(institution: InstitutionRecord, caller: AuthUser): Promise<void> {
+    AuthorizationPolicy.validateIdentity(caller);
+    const isPlatformOp = AuthorizationPolicy.isPlatformAdmin(caller);
+    const isCollegeAdmin = (caller.role === 'admin' || caller.role === 'super_admin') && 
+      (caller.institutionId === institution.id || caller.institutionCode === institution.code);
+
+    if (!isPlatformOp && !isCollegeAdmin) {
+      throw new ForbiddenException('Access denied. Only Platform Operators or authorized Institution Administrators can update institution configurations.');
+    }
+
+    const index = this.institutions.findIndex(i => i.id === institution.id || i.code.toUpperCase() === institution.code.toUpperCase());
+    if (index !== -1) {
+      this.institutions[index] = { ...institution, updatedAt: new Date().toISOString() };
+    } else {
+      this.institutions.push({ ...institution, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
+    }
+
+    this.persistToStorage();
+    this.notifyListeners();
+  }
+
+  // ====================================================
+  // 4B. DEPARTMENT GOVERNANCE & MANAGEMENT (PHASE 17B)
+  // ====================================================
+  public getAllDepartments(caller?: AuthUser): DepartmentRecord[] {
+    if (caller !== undefined) {
+      AuthorizationPolicy.validateIdentity(caller);
+      const isPlatformOp = AuthorizationPolicy.isPlatformAdmin(caller);
+      let depts = this.departments;
+      if (!isPlatformOp && caller.institutionId) {
+        const callerInst = canonicalizeInstitutionId(caller.institutionId || caller.college);
+        depts = depts.filter(d => canonicalizeInstitutionId(d.institutionId) === callerInst);
+      }
+      // If super admin or admin, return all departments (active & inactive)
+      if (caller.role === 'admin' || caller.role === 'super_admin') {
+        return [...depts];
+      }
+      // HODs, Mentors and Students can only see active departments or their own department
+      const userDept = (caller.departmentCode || caller.dept?.split(' ')[0] || '').trim().toUpperCase();
+      return depts.filter(d => d.status === 'active' || d.code.toUpperCase() === userDept);
+    }
+    return [...this.departments];
+  }
+
+  public getDepartmentByCode(code: string, caller?: AuthUser): DepartmentRecord | null {
+    if (caller !== undefined) {
+      AuthorizationPolicy.validateIdentity(caller);
+    }
+    if (!code) return null;
+    const norm = code.trim().toUpperCase();
+    const dept = this.departments.find(d => d.code.toUpperCase() === norm) || null;
+    return dept ? { ...dept } : null;
+  }
+
+  public async createDepartment(
+    deptData: {
+      code: string;
+      name: string;
+      institutionId?: string;
+      hodId?: string;
+      hodName?: string;
+      maxStudentCapacity?: number;
+      contactEmail?: string;
+      contactPhone?: string;
+      academicHeadName?: string;
+      description?: string;
+      defaultMonitoringStartTime?: string;
+      defaultMonitoringEndTime?: string;
+    },
+    caller: AuthUser
+  ): Promise<DepartmentRecord> {
+    AuthorizationPolicy.validateSuperAdminScope(caller);
+
+    const normCode = (deptData.code || '').trim().toUpperCase();
+    if (!normCode || normCode.length < 2) {
+      throw new Error('Department code must be at least 2 characters long.');
+    }
+    const normName = (deptData.name || '').trim();
+    if (!normName || normName.length < 2) {
+      throw new Error('Department name must be at least 2 characters long.');
+    }
+
+    const targetInstId = canonicalizeInstitutionId(deptData.institutionId || caller.institutionId || caller.college);
+    const duplicate = this.departments.find(d => 
+      d.code.toUpperCase() === normCode && 
+      canonicalizeInstitutionId(d.institutionId) === targetInstId
+    );
+    if (duplicate) {
+      throw new Error(`Department with code '${normCode}' already exists (${duplicate.name}).`);
+    }
+
+    // Phase 19B: Server-Side Licensing & Department Capacity Verification
+    const currentDeptCount = this.departments.filter(
+      d => canonicalizeInstitutionId(d.institutionId) === targetInstId && d.status !== 'inactive'
+    ).length;
+    LicensingEngine.getInstance().verifyDepartmentCapacity(targetInstId, currentDeptCount, 1);
+
+    const newDept: DepartmentRecord = {
+      id: `dept-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      institutionId: targetInstId,
+      code: normCode,
+      name: normName,
+      status: 'active',
+      hodId: deptData.hodId,
+      hodName: deptData.hodName,
+      maxStudentCapacity: deptData.maxStudentCapacity || 120,
+      contactEmail: deptData.contactEmail,
+      contactPhone: deptData.contactPhone,
+      academicHeadName: deptData.academicHeadName,
+      description: deptData.description,
+      defaultMonitoringStartTime: deptData.defaultMonitoringStartTime || '09:00:00',
+      defaultMonitoringEndTime: deptData.defaultMonitoringEndTime || '17:00:00',
+      isPilotAuthorized: false, // Strict safety: new departments are NOT pilot authorized in production
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    this.departments.push(newDept);
+    this.persistToStorage();
+    this.notifyListeners();
+
+    const client = getSupabaseClient();
+    if (client) {
+      try {
+        await client.from('departments').insert({
+          id: newDept.id,
+          institution_id: newDept.institutionId,
+          code: newDept.code,
+          name: newDept.name,
+          status: newDept.status,
+          hod_id: newDept.hodId,
+          hod_name: newDept.hodName,
+          max_student_capacity: newDept.maxStudentCapacity,
+          contact_email: newDept.contactEmail,
+          contact_phone: newDept.contactPhone,
+          academic_head_name: newDept.academicHeadName,
+          description: newDept.description,
+          default_monitoring_start_time: newDept.defaultMonitoringStartTime,
+          default_monitoring_end_time: newDept.defaultMonitoringEndTime,
+          is_pilot_authorized: false,
+        });
+      } catch (err) {
+        console.warn('Supabase createDepartment insert error:', err);
+      }
+    }
+
+    return newDept;
+  }
+
+  public async deactivateDepartment(departmentCode: string, caller: AuthUser): Promise<DepartmentRecord> {
+    AuthorizationPolicy.validateSuperAdminScope(caller);
+
+    const normCode = (departmentCode || '').trim().toUpperCase();
+    const dept = this.departments.find(d => d.code.toUpperCase() === normCode);
+    if (!dept) {
+      throw new Error(`Department with code '${departmentCode}' was not found.`);
+    }
+
+    dept.status = 'inactive';
+    dept.updatedAt = new Date().toISOString();
+    this.persistToStorage();
+    this.notifyListeners();
+
+    const client = getSupabaseClient();
+    if (client) {
+      try {
+        await client
+          .from('departments')
+          .update({
+            status: 'inactive',
+            updated_at: dept.updatedAt,
+          })
+          .eq('code', dept.code);
+      } catch (err) {
+        console.warn('Supabase deactivateDepartment update error:', err);
+      }
+    }
+
+    return dept;
+  }
+
+  public async reactivateDepartment(departmentCode: string, caller: AuthUser): Promise<DepartmentRecord> {
+    AuthorizationPolicy.validateSuperAdminScope(caller);
+
+    const normCode = (departmentCode || '').trim().toUpperCase();
+    const dept = this.departments.find(d => d.code.toUpperCase() === normCode);
+    if (!dept) {
+      throw new Error(`Department with code '${departmentCode}' was not found.`);
+    }
+
+    dept.status = 'active';
+    dept.updatedAt = new Date().toISOString();
+    this.persistToStorage();
+    this.notifyListeners();
+
+    const client = getSupabaseClient();
+    if (client) {
+      try {
+        await client
+          .from('departments')
+          .update({
+            status: 'active',
+            updated_at: dept.updatedAt,
+          })
+          .eq('code', dept.code);
+      } catch (err) {
+        console.warn('Supabase reactivateDepartment update error:', err);
+      }
+    }
+
+    return dept;
+  }
+
+  public async assignDepartmentHod(
+    departmentCode: string,
+    hodId: string,
+    hodName: string,
+    caller: AuthUser
+  ): Promise<DepartmentRecord> {
+    AuthorizationPolicy.validateSuperAdminScope(caller);
+
+    const normCode = (departmentCode || '').trim().toUpperCase();
+    const dept = this.departments.find(d => d.code.toUpperCase() === normCode);
+    if (!dept) {
+      throw new Error(`Department with code '${departmentCode}' was not found.`);
+    }
+
+    dept.hodId = hodId.trim();
+    dept.hodName = hodName.trim();
+    dept.updatedAt = new Date().toISOString();
+
+    // Also update or add HOD record in this.hods
+    const hodIndex = this.hods.findIndex(h => h.departmentCode.toUpperCase() === normCode);
+    if (hodIndex !== -1) {
+      this.hods[hodIndex].hodId = hodId.trim();
+      this.hods[hodIndex].name = hodName.trim();
+    } else {
+      this.hods.push({
+        id: `hod-${normCode.toLowerCase()}`,
+        hodId: hodId.trim(),
+        name: hodName.trim(),
+        email: `${normCode.toLowerCase()}-hod@college.edu`,
+        departmentCode: normCode,
+        officeLocation: 'Academic Complex',
+      });
+    }
+
+    this.persistToStorage();
+    this.notifyListeners();
+
+    const client = getSupabaseClient();
+    if (client) {
+      try {
+        await client
+          .from('departments')
+          .update({
+            hod_id: dept.hodId,
+            hod_name: dept.hodName,
+            updated_at: dept.updatedAt,
+          })
+          .eq('code', dept.code);
+      } catch (err) {
+        console.warn('Supabase assignDepartmentHod update error:', err);
+      }
+    }
+
+    return dept;
+  }
+
+  public getInstitutionStatistics(caller: AuthUser): {
+    totalDepartments: number;
+    activeDepartments: number;
+    totalStudents: number;
+    totalMentors: number;
+    activeAssignments: number;
+    departmentBreakdown: Array<{ code: string; name: string; studentCount: number; mentorCount: number; status: string }>;
+  } {
+    AuthorizationPolicy.validateSuperAdminScope(caller);
+
+    const isPlatformOp = AuthorizationPolicy.isPlatformAdmin(caller);
+    const callerInst = canonicalizeInstitutionId(caller.institutionId || caller.college);
+    const targetDepts = (!isPlatformOp && caller.institutionId)
+      ? this.departments.filter(d => canonicalizeInstitutionId(d.institutionId) === callerInst)
+      : this.departments;
+    const targetStudents = (!isPlatformOp && caller.institutionId)
+      ? this.students.filter(s => canonicalizeInstitutionId(s.institutionId) === callerInst)
+      : this.students;
+    const targetMentors = (!isPlatformOp && caller.institutionId)
+      ? this.mentors.filter(m => canonicalizeInstitutionId(m.institutionId) === callerInst)
+      : this.mentors;
+    const targetAssignments = (!isPlatformOp && caller.institutionId)
+      ? this.assignments.filter(a => canonicalizeInstitutionId(a.institutionId) === callerInst)
+      : this.assignments;
+
+    const activeDepts = targetDepts.filter(d => d.status === 'active');
+    const breakdown = targetDepts.map(d => {
+      const sCount = targetStudents.filter(s => (s.departmentCode || s.dept || '').toUpperCase() === d.code.toUpperCase()).length;
+      const mCount = targetMentors.filter(m => (m.departmentCode || '').toUpperCase() === d.code.toUpperCase()).length;
+      return {
+        code: d.code,
+        name: d.name,
+        studentCount: sCount,
+        mentorCount: mCount,
+        status: d.status,
+      };
+    });
+
+    return {
+      totalDepartments: targetDepts.length,
+      activeDepartments: activeDepts.length,
+      totalStudents: targetStudents.length,
+      totalMentors: targetMentors.length,
+      activeAssignments: targetAssignments.filter(a => a.assignmentStatus === 'active').length,
+      departmentBreakdown: breakdown,
+    };
+  }
+
+  public getDepartmentAttendanceSummary(departmentCode: string, caller?: AuthUser): {
+    departmentCode: string;
+    totalStudents: number;
+    totalSessions: number;
+    presentCount: number;
+    absentCount: number;
+    lateCount: number;
+    verifiedCount: number;
+    attendanceRate: number;
+  } {
+    if (caller !== undefined) {
+      AuthorizationPolicy.validateIdentity(caller);
+      AuthorizationPolicy.validateHodScope(caller, departmentCode);
+      const targetDept = this.departments.find(d => d.code.toUpperCase() === departmentCode.trim().toUpperCase());
+      if (targetDept) {
+        AuthorizationPolicy.validateDepartmentActive(targetDept, caller);
+      }
+    }
+
+    const normCode = (departmentCode || '').trim().toUpperCase();
+    const deptStudents = this.students.filter(s => (s.departmentCode || s.dept || '').toUpperCase() === normCode);
+    const studentIdSet = new Set(deptStudents.map(s => s.studentId.trim().toLowerCase()));
+
+    const sessions = this.attendanceSessions.filter(a => studentIdSet.has(a.studentId.trim().toLowerCase()));
+    const totalSessions = sessions.length;
+    const presentCount = sessions.filter(s => s.status === 'present').length;
+    const absentCount = sessions.filter(s => s.status === 'absent').length;
+    const lateCount = sessions.filter(s => s.status === 'late').length;
+    const verifiedCount = sessions.filter(s => s.isVerified).length;
+    const attendanceRate = totalSessions > 0 ? Math.round((presentCount / totalSessions) * 100) : 100;
+
+    return {
+      departmentCode: normCode,
+      totalStudents: deptStudents.length,
+      totalSessions,
+      presentCount,
+      absentCount,
+      lateCount,
+      verifiedCount,
+      attendanceRate,
+    };
+  }
+
+  // ====================================================
+  // 4C. DEPARTMENT CONFIGURATION & BATCHES (PHASE 17C)
+  // ====================================================
+  public async updateDepartmentConfig(
+    departmentCode: string,
+    config: {
+      maxStudentCapacity?: number;
+      contactEmail?: string;
+      contactPhone?: string;
+      academicHeadName?: string;
+      description?: string;
+      defaultMonitoringStartTime?: string;
+      defaultMonitoringEndTime?: string;
+    },
+    caller: AuthUser
+  ): Promise<DepartmentRecord> {
+    AuthorizationPolicy.validateIdentity(caller);
+    if (caller.role !== 'admin' && caller.role !== 'super_admin') {
+      AuthorizationPolicy.validateHodScope(caller, departmentCode);
+    }
+
+    const normCode = (departmentCode || '').trim().toUpperCase();
+    const dept = this.departments.find(d => d.code.toUpperCase() === normCode);
+    if (!dept) {
+      throw new Error(`Department with code '${departmentCode}' was not found.`);
+    }
+
+    AuthorizationPolicy.validateDepartmentActive(dept, caller);
+
+    if (config.maxStudentCapacity !== undefined) {
+      if (typeof config.maxStudentCapacity !== 'number' || config.maxStudentCapacity < 1 || config.maxStudentCapacity > 1000) {
+        throw new Error('Validation Error: Maximum student capacity must be between 1 and 1000.');
+      }
+      dept.maxStudentCapacity = config.maxStudentCapacity;
+    }
+
+    if (config.contactEmail !== undefined) {
+      dept.contactEmail = config.contactEmail.trim();
+    }
+    if (config.contactPhone !== undefined) {
+      dept.contactPhone = config.contactPhone.trim();
+    }
+    if (config.academicHeadName !== undefined) {
+      dept.academicHeadName = config.academicHeadName.trim();
+    }
+    if (config.description !== undefined) {
+      dept.description = config.description.trim();
+    }
+    if (config.defaultMonitoringStartTime !== undefined) {
+      dept.defaultMonitoringStartTime = config.defaultMonitoringStartTime.trim();
+    }
+    if (config.defaultMonitoringEndTime !== undefined) {
+      dept.defaultMonitoringEndTime = config.defaultMonitoringEndTime.trim();
+    }
+
+    dept.updatedAt = new Date().toISOString();
+    this.persistToStorage();
+    this.notifyListeners();
+
+    const client = getSupabaseClient();
+    if (client) {
+      try {
+        await client
+          .from('departments')
+          .update({
+            max_student_capacity: dept.maxStudentCapacity,
+            contact_email: dept.contactEmail,
+            contact_phone: dept.contactPhone,
+            academic_head_name: dept.academicHeadName,
+            description: dept.description,
+            default_monitoring_start_time: dept.defaultMonitoringStartTime,
+            default_monitoring_end_time: dept.defaultMonitoringEndTime,
+            updated_at: dept.updatedAt,
+          })
+          .eq('code', dept.code);
+      } catch (err) {
+        console.warn('Supabase updateDepartmentConfig error:', err);
+      }
+    }
+
+    return { ...dept };
+  }
+
+  // ====================================================
+  // 4D. INTERNSHIP BATCHES & MANAGEMENT (PHASE 17C)
+  // ====================================================
+  public async createInternshipBatch(
+    batchData: {
+      departmentCode: string;
+      batchName: string;
+      academicYear: string;
+      termCode: 'ODD' | 'EVEN' | 'SUMMER';
+      semester: number;
+      startDate: string;
+      endDate: string;
+      maxCapacity?: number;
+    },
+    caller: AuthUser
+  ): Promise<InternshipBatchRecord> {
+    AuthorizationPolicy.validateIdentity(caller);
+    if (caller.role === 'student') {
+      throw new ForbiddenException('Security Violation: Students cannot create internship batches.');
+    }
+    if (caller.role !== 'admin' && caller.role !== 'super_admin') {
+      AuthorizationPolicy.validateHodScope(caller, batchData.departmentCode);
+    }
+
+    const normDept = (batchData.departmentCode || '').trim().toUpperCase();
+    const dept = this.departments.find(d => d.code.toUpperCase() === normDept);
+    if (!dept) {
+      throw new Error(`Department with code '${batchData.departmentCode}' was not found.`);
+    }
+    AuthorizationPolicy.validateDepartmentActive(dept, caller);
+
+    const normName = (batchData.batchName || '').trim();
+    if (!normName || normName.length < 3) {
+      throw new Error('Validation Error: Batch name must be at least 3 characters long.');
+    }
+
+    const start = new Date(batchData.startDate);
+    const end = new Date(batchData.endDate);
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      throw new Error('Validation Error: Invalid date format for start or end date.');
+    }
+    if (end <= start) {
+      throw new Error(`Validation Error: Invalid batch date range. End date (${batchData.endDate}) must be after start date (${batchData.startDate}).`);
+    }
+
+    const duplicate = this.batches.find(
+      b => b.departmentCode.toUpperCase() === normDept && b.batchName.toLowerCase() === normName.toLowerCase()
+    );
+    if (duplicate) {
+      throw new Error(`Validation Error: A batch named '${normName}' already exists in department '${normDept}'.`);
+    }
+
+    const batchInstId = dept.institutionId || caller.institutionId || 'inst-smvec-001';
+    const newBatch: InternshipBatchRecord = {
+      id: `batch-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      institutionId: batchInstId,
+      departmentCode: normDept,
+      batchName: normName,
+      academicYear: batchData.academicYear.trim(),
+      termCode: batchData.termCode,
+      semester: batchData.semester,
+      startDate: batchData.startDate,
+      endDate: batchData.endDate,
+      maxCapacity: batchData.maxCapacity || 60,
+      enrolledStudentCount: 0,
+      status: 'active',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    this.batches.unshift(newBatch);
+    this.persistToStorage();
+    this.notifyListeners();
+
+    const client = getSupabaseClient();
+    if (client) {
+      try {
+        await client.from('internship_batches').insert({
+          id: newBatch.id,
+          institution_id: newBatch.institutionId,
+          department_code: newBatch.departmentCode,
+          batch_name: newBatch.batchName,
+          academic_year: newBatch.academicYear,
+          term_code: newBatch.termCode,
+          semester: newBatch.semester,
+          start_date: newBatch.startDate,
+          end_date: newBatch.endDate,
+          max_capacity: newBatch.maxCapacity,
+          status: newBatch.status,
+        });
+      } catch (err) {
+        console.warn('Supabase createInternshipBatch insert error:', err);
+      }
+    }
+
+    return { ...newBatch };
+  }
+
+  public getInternshipBatches(departmentCode?: string, caller?: AuthUser): InternshipBatchRecord[] {
+    const isPlatformOp = AuthorizationPolicy.isPlatformAdmin(caller);
+    let baseBatches = this.batches;
+    if (caller && !isPlatformOp && caller.institutionId) {
+      const callerInst = canonicalizeInstitutionId(caller.institutionId || caller.college);
+      baseBatches = baseBatches.filter(b => canonicalizeInstitutionId(b.institutionId) === callerInst);
+    }
+
+    if (caller !== undefined) {
+      AuthorizationPolicy.validateIdentity(caller);
+      if (caller.role === 'hod') {
+        const callerDept = (caller.departmentCode || caller.dept?.split(' ')[0] || '').trim().toUpperCase();
+        if (departmentCode && departmentCode.trim().toUpperCase() !== callerDept) {
+          throw new ForbiddenException(`Cross-department batch access forbidden. HOD of ${callerDept} cannot access batches for ${departmentCode}.`);
+        }
+        return baseBatches.filter(b => b.departmentCode.toUpperCase() === callerDept);
+      }
+      if (caller.role === 'student') {
+        const student = this.getStudentById(caller.studentId || caller.id);
+        const studentDept = (student?.departmentCode || caller.departmentCode || caller.dept?.split(' ')[0] || '').trim().toUpperCase();
+        return baseBatches.filter(b => b.departmentCode.toUpperCase() === studentDept);
+      }
+    }
+
+    if (departmentCode && departmentCode !== 'ALL') {
+      const norm = departmentCode.trim().toUpperCase();
+      return baseBatches.filter(b => b.departmentCode.toUpperCase() === norm);
+    }
+    return [...baseBatches];
+  }
+
+  public getInternshipBatchById(batchId: string, caller?: AuthUser): InternshipBatchRecord | null {
+    if (!batchId) return null;
+    const batch = this.batches.find(b => b.id === batchId) || null;
+    if (!batch) return null;
+
+    if (caller !== undefined) {
+      AuthorizationPolicy.validateIdentity(caller);
+      if (caller.role === 'hod') {
+        AuthorizationPolicy.validateHodScope(caller, batch.departmentCode);
+      }
+      if (caller.role === 'student') {
+        const student = this.getStudentById(caller.studentId || caller.id);
+        const studentDept = (student?.departmentCode || caller.departmentCode || caller.dept?.split(' ')[0] || '').trim().toUpperCase();
+        if (studentDept && batch.departmentCode.toUpperCase() !== studentDept) {
+          throw new ForbiddenException(`Access forbidden. Batch belongs to ${batch.departmentCode}.`);
+        }
+      }
+    }
+
+    return { ...batch };
+  }
+
+  public async updateInternshipBatch(
+    batchId: string,
+    updates: Partial<InternshipBatchRecord>,
+    caller: AuthUser
+  ): Promise<InternshipBatchRecord> {
+    AuthorizationPolicy.validateIdentity(caller);
+    if (caller.role === 'student') {
+      throw new ForbiddenException('Security Violation: Students cannot modify internship batches.');
+    }
+
+    const batch = this.batches.find(b => b.id === batchId);
+    if (!batch) {
+      throw new Error(`Internship batch '${batchId}' was not found.`);
+    }
+
+    if (caller.role !== 'admin' && caller.role !== 'super_admin') {
+      AuthorizationPolicy.validateHodScope(caller, batch.departmentCode);
+    }
+
+    if (updates.startDate && updates.endDate) {
+      const start = new Date(updates.startDate);
+      const end = new Date(updates.endDate);
+      if (end <= start) {
+        throw new Error('Validation Error: Batch end date must be after start date.');
+      }
+    }
+
+    Object.assign(batch, updates);
+    batch.updatedAt = new Date().toISOString();
+    this.persistToStorage();
+    this.notifyListeners();
+
+    const client = getSupabaseClient();
+    if (client) {
+      try {
+        await client
+          .from('internship_batches')
+          .update({
+            batch_name: batch.batchName,
+            status: batch.status,
+            max_capacity: batch.maxCapacity,
+            start_date: batch.startDate,
+            end_date: batch.endDate,
+            updated_at: batch.updatedAt,
+          })
+          .eq('id', batch.id);
+      } catch (err) {
+        console.warn('Supabase updateInternshipBatch error:', err);
+      }
+    }
+
+    return { ...batch };
+  }
+
+  public async assignStudentToBatch(
+    studentId: string,
+    batchId: string,
+    caller: AuthUser
+  ): Promise<StudentRecord> {
+    AuthorizationPolicy.validateIdentity(caller);
+    if (caller.role === 'student') {
+      throw new ForbiddenException('Security Violation: Students cannot assign themselves to batches.');
+    }
+
+    const student = this.getStudentById(studentId);
+    if (!student) {
+      throw new Error(`Student with ID '${studentId}' was not found.`);
+    }
+
+    AuthorizationPolicy.validateInstitutionScope(caller, student.institutionId);
+
+    if (caller.role === 'hod') {
+      AuthorizationPolicy.validateHodScope(caller, student.departmentCode);
+    }
+    if (caller.role === 'mentor') {
+      AuthorizationPolicy.validateMentorScope(caller, student);
+    }
+
+    const batch = this.batches.find(b => b.id === batchId);
+    if (!batch) {
+      throw new Error(`Internship batch '${batchId}' was not found.`);
+    }
+
+    const studInst = canonicalizeInstitutionId(student.institutionId);
+    const batchInst = canonicalizeInstitutionId(batch.institutionId);
+    if (studInst !== batchInst) {
+      throw new ForbiddenException(
+        `Tenant Isolation Violation: Cannot assign student from institution '${student.institutionId}' to batch belonging to institution '${batch.institutionId}'.`
+      );
+    }
+
+    const studDept = student.departmentCode.trim().toUpperCase();
+    const batchDept = batch.departmentCode.trim().toUpperCase();
+    if (studDept !== batchDept) {
+      throw new ForbiddenException(
+        `Department mismatch: Cannot assign student '${student.studentName}' (${studDept}) to batch '${batch.batchName}' (${batchDept}). Students must belong to the batch's department.`
+      );
+    }
+
+    if (batch.status !== 'active') {
+      throw new Error(`Validation Error: Cannot assign student to inactive batch '${batch.batchName}'.`);
+    }
+
+    const currentEnrolled = this.students.filter(s => s.batchId === batch.id && s.studentId !== student.studentId).length;
+    if (batch.maxCapacity && currentEnrolled >= batch.maxCapacity) {
+      throw new Error(`Validation Error: Batch '${batch.batchName}' has reached its maximum capacity of ${batch.maxCapacity} students.`);
+    }
+
+    student.batchId = batch.id;
+    student.batchName = batch.batchName;
+
+    batch.enrolledStudentCount = this.students.filter(s => s.batchId === batch.id).length;
+    batch.updatedAt = new Date().toISOString();
+
+    this.persistToStorage();
+    this.notifyListeners();
+
+    const client = getSupabaseClient();
+    if (client) {
+      try {
+        await client
+          .from('students')
+          .update({
+            batch_id: batch.id,
+            batch_name: batch.batchName,
+          })
+          .eq('student_id', student.studentId);
+      } catch (err) {
+        console.warn('Supabase assignStudentToBatch error:', err);
+      }
+    }
+
+    return { ...student };
+  }
+
+  // ====================================================
+  // 4E. STUDENT TRANSFERS (PHASE 17C)
+  // ====================================================
+  public async transferStudentDepartment(
+    studentId: string,
+    targetDepartmentCode: string,
+    reason: string,
+    caller: AuthUser
+  ): Promise<StudentRecord> {
+    AuthorizationPolicy.validateSuperAdminScope(caller);
+
+    const student = this.getStudentById(studentId);
+    if (!student) {
+      throw new Error(`Student with ID '${studentId}' was not found.`);
+    }
+
+    const studentInstId = canonicalizeInstitutionId(student.institutionId);
+    AuthorizationPolicy.validateInstitutionScope(caller, studentInstId);
+
+    const normTargetDept = (targetDepartmentCode || '').trim().toUpperCase();
+    const targetDept = this.departments.find(d => 
+      d.code.toUpperCase() === normTargetDept && 
+      canonicalizeInstitutionId(d.institutionId) === studentInstId
+    );
+    if (!targetDept) {
+      throw new Error(`Target department '${targetDepartmentCode}' was not found in institution '${student.institutionId || 'default'}'.`);
+    }
+    AuthorizationPolicy.validateDepartmentActive(targetDept, caller);
+
+    // Cross-tenant check explicit
+    if (canonicalizeInstitutionId(targetDept.institutionId) !== studentInstId) {
+      throw new ForbiddenException(
+        `Tenant Isolation Violation: Cannot transfer student '${student.studentName}' (${student.institutionId}) across institutions to department in '${targetDept.institutionId}'.`
+      );
+    }
+
+    const normReason = (reason || '').trim();
+    if (!normReason || normReason.length < 5) {
+      throw new Error('Validation Error: A valid transfer reason of at least 5 characters is required.');
+    }
+
+    const oldDept = student.departmentCode.trim().toUpperCase();
+    if (oldDept === normTargetDept) {
+      throw new Error(`Validation Error: Student is already enrolled in department '${normTargetDept}'.`);
+    }
+
+    const currentStudentsInTarget = this.students.filter(s => (s.departmentCode || s.dept || '').toUpperCase() === normTargetDept).length;
+    if (targetDept.maxStudentCapacity && currentStudentsInTarget >= targetDept.maxStudentCapacity) {
+      throw new Error(`Validation Error: Target department '${targetDept.name}' has reached its maximum capacity of ${targetDept.maxStudentCapacity} students.`);
+    }
+
+    const transferRecord: StudentTransferRecord = {
+      id: `trsf-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      studentId: student.studentId,
+      studentName: student.studentName,
+      fromDepartmentCode: oldDept,
+      toDepartmentCode: normTargetDept,
+      authorizedById: caller.id || 'super_admin',
+      authorizedByName: caller.name || caller.id || 'Super Admin',
+      reason: normReason,
+      academicYear: student.academicYear || '2026-2027',
+      previousBatchId: student.batchId,
+      transferredAt: new Date().toISOString(),
+    };
+
+    this.transferHistory.unshift(transferRecord);
+
+    // Update student department and clear batch enrollment
+    student.departmentCode = normTargetDept;
+    student.dept = normTargetDept;
+    student.batchId = undefined;
+    student.batchName = undefined;
+
+    this.persistToStorage();
+    this.notifyListeners();
+
+    const client = getSupabaseClient();
+    if (client) {
+      try {
+        await client.from('student_department_transfers').insert({
+          id: transferRecord.id,
+          student_id: student.id,
+          from_department_id: targetDept.id,
+          to_department_id: targetDept.id,
+          authorized_by: transferRecord.authorizedById,
+          reason: transferRecord.reason,
+          previous_batch_id: transferRecord.previousBatchId || null,
+          academic_year: student.academicYear || '2026-2027',
+          transferred_at: transferRecord.transferredAt,
+        });
+
+        await client
+          .from('students')
+          .update({
+            department_code: normTargetDept,
+            batch_id: null,
+            batch_name: null,
+          })
+          .eq('student_id', student.studentId);
+      } catch (err) {
+        console.warn('Supabase student transfer error:', err);
+      }
+    }
+
+    return { ...student };
+  }
+
+  public getStudentTransferHistory(studentId?: string, caller?: AuthUser): StudentTransferRecord[] {
+    if (caller !== undefined) {
+      AuthorizationPolicy.validateIdentity(caller);
+      if (caller.role === 'student') {
+        const myStudentId = (caller.studentId || caller.id).trim().toLowerCase();
+        return this.transferHistory.filter(t => t.studentId.trim().toLowerCase() === myStudentId);
+      }
+      if (caller.role === 'hod') {
+        const callerDept = (caller.departmentCode || caller.dept?.split(' ')[0] || '').trim().toUpperCase();
+        return this.transferHistory.filter(
+          t => t.fromDepartmentCode.toUpperCase() === callerDept || t.toDepartmentCode.toUpperCase() === callerDept
+        );
+      }
+    }
+
+    if (studentId) {
+      const cleanId = studentId.trim().toLowerCase();
+      return this.transferHistory.filter(t => t.studentId.trim().toLowerCase() === cleanId);
+    }
+    return [...this.transferHistory];
+  }
+
+  // ====================================================
+  // 4F. PROVIDERS & MULTI-DEPARTMENT DASHBOARD ANALYTICS (PHASE 17C)
+  // ====================================================
+  public getInternshipProviders(departmentCode?: string, caller?: AuthUser): InternshipProviderRecord[] {
+    let deptFilter: string | undefined = departmentCode;
+    if (caller !== undefined) {
+      AuthorizationPolicy.validateIdentity(caller);
+      if (caller.role === 'hod') {
+        const callerDept = (caller.departmentCode || caller.dept?.split(' ')[0] || '').trim().toUpperCase();
+        if (departmentCode && departmentCode !== 'ALL' && departmentCode.trim().toUpperCase() !== callerDept) {
+          throw new ForbiddenException(`Cross-department provider access forbidden. HOD of ${callerDept} cannot access providers for ${departmentCode}.`);
+        }
+        deptFilter = callerDept;
+      }
+    }
+
+    let locations = locationRepository.getLocations(deptFilter);
+    if (departmentCode && departmentCode !== 'ALL') {
+      const normDept = departmentCode.trim().toUpperCase();
+      locations = locations.filter(l => (l.departmentCode || '').toUpperCase() === normDept);
+    }
+
+    const companyMap = new Map<string, {
+      companyName: string;
+      locations: typeof locations;
+      departments: Set<string>;
+    }>();
+
+    for (const loc of locations) {
+      const cName = loc.companyName.trim();
+      if (!companyMap.has(cName)) {
+        companyMap.set(cName, {
+          companyName: cName,
+          locations: [],
+          departments: new Set(),
+        });
+      }
+      const entry = companyMap.get(cName)!;
+      entry.locations.push(loc);
+      if (loc.departmentCode) {
+        entry.departments.add(loc.departmentCode.toUpperCase());
+      }
+    }
+
+    const providers: InternshipProviderRecord[] = [];
+    companyMap.forEach((entry, companyName) => {
+      const depts = Array.from(entry.departments);
+      const totalLocations = entry.locations.length;
+      const hasActive = entry.locations.some(l => l.status === 'active' || l.isActive);
+      const allInactive = entry.locations.every(l => l.status === 'inactive' || (!l.isActive && l.status !== 'pending_approval'));
+      
+      const providerStatus: 'active' | 'pending_approval' | 'inactive' = hasActive 
+        ? 'active' 
+        : (allInactive ? 'inactive' : 'pending_approval');
+
+      const activeInterns = this.students.filter(s => 
+        s.company.toLowerCase() === companyName.toLowerCase() && 
+        (s.status === 'inProgress' || s.status === 'onTrack') &&
+        (!departmentCode || departmentCode === 'ALL' || (s.departmentCode || s.dept || '').toUpperCase() === departmentCode.toUpperCase())
+      ).length;
+
+      const firstLoc = entry.locations[0];
+
+      providers.push({
+        companyName,
+        totalLocations,
+        departmentCount: depts.length || 1,
+        participatingDepartments: depts.length > 0 ? depts : ['CSEBS'],
+        providerStatus,
+        earliestStartDate: '2026-06-01',
+        latestEndDate: '2026-12-31',
+        activeInternsCount: activeInterns,
+        contactEmail: firstLoc ? `${companyName.toLowerCase().replace(/[^a-z0-9]/g, '')}@internships.com` : undefined,
+        contactPhone: '+91 413 220 0000',
+      });
+    });
+
+    return providers;
+  }
+
+  public getMultiDepartmentInternshipStats(caller?: AuthUser): Array<{
+    code: string;
+    name: string;
+    status: string;
+    isPilotAuthorized: boolean;
+    totalStudents: number;
+    activeInternships: number;
+    completedInternships: number;
+    atRiskInternships: number;
+    unassignedStudents: number;
+    activeMentors: number;
+    approvedLocations: number;
+    activeBatches: number;
+    attendanceRate: number;
+    verificationRate: number;
+  }> {
+    const visibleDepts = this.getAllDepartments(caller);
+    const allLocations = locationRepository.getLocations();
+
+    return visibleDepts.map(d => {
+      const norm = d.code.toUpperCase();
+      const deptStudents = this.students.filter(s => (s.departmentCode || s.dept || '').toUpperCase() === norm);
+      const totalStudents = deptStudents.length;
+      const activeInternships = deptStudents.filter(s => s.status === 'inProgress' || s.status === 'onTrack').length;
+      const completedInternships = deptStudents.filter(s => s.status === 'completed').length;
+      const atRiskInternships = deptStudents.filter(s => s.status === 'blocked' || s.status === 'inactive').length;
+      const unassignedStudents = deptStudents.filter(s => !s.internshipLocationId || s.company === 'Not Assigned').length;
+
+      const activeMentors = this.mentors.filter(m => (m.departmentCode || '').toUpperCase() === norm).length;
+      const approvedLocations = allLocations.filter(l => (l.departmentCode || '').toUpperCase() === norm && (l.status === 'active' || l.isActive)).length;
+      const activeBatches = this.batches.filter(b => b.departmentCode.toUpperCase() === norm && b.status === 'active').length;
+
+      const studentIdSet = new Set(deptStudents.map(s => s.studentId.trim().toLowerCase()));
+      const sessions = this.attendanceSessions.filter(a => studentIdSet.has(a.studentId.trim().toLowerCase()));
+      const totalSessions = sessions.length;
+      const presentCount = sessions.filter(s => s.status === 'present').length;
+      const verifiedCount = sessions.filter(s => s.isVerified).length;
+      const attendanceRate = totalSessions > 0 ? Math.round((presentCount / totalSessions) * 100) : 100;
+      const verificationRate = totalSessions > 0 ? Math.round((verifiedCount / totalSessions) * 100) : 100;
+
+      return {
+        code: d.code,
+        name: d.name,
+        status: d.status,
+        isPilotAuthorized: !!d.isPilotAuthorized,
+        totalStudents,
+        activeInternships,
+        completedInternships,
+        atRiskInternships,
+        unassignedStudents,
+        activeMentors,
+        approvedLocations,
+        activeBatches,
+        attendanceRate,
+        verificationRate,
+      };
+    });
+  }
+
+  public getDepartmentDetailedAnalytics(departmentCode: string, caller?: AuthUser): {
+    departmentCode: string;
+    departmentName: string;
+    status: string;
+    totalStudents: number;
+    activeInternships: number;
+    completedInternships: number;
+    atRiskInternships: number;
+    unassignedStudents: number;
+    activeBatches: number;
+    batches: InternshipBatchRecord[];
+    locationsCount: number;
+    attendanceRate: number;
+    verificationRate: number;
+  } {
+    const norm = (departmentCode || '').trim().toUpperCase();
+    if (caller !== undefined) {
+      AuthorizationPolicy.validateIdentity(caller);
+      if (caller.role === 'hod') {
+        AuthorizationPolicy.validateHodScope(caller, norm);
+      }
+    }
+
+    const dept = this.departments.find(d => d.code.toUpperCase() === norm);
+    if (!dept) {
+      throw new Error(`Department with code '${departmentCode}' was not found.`);
+    }
+
+    const allStats = this.getMultiDepartmentInternshipStats(caller);
+    const dStat = allStats.find(s => s.code.toUpperCase() === norm) || {
+      code: dept.code,
+      name: dept.name,
+      status: dept.status,
+      isPilotAuthorized: !!dept.isPilotAuthorized,
+      totalStudents: 0,
+      activeInternships: 0,
+      completedInternships: 0,
+      atRiskInternships: 0,
+      unassignedStudents: 0,
+      activeMentors: 0,
+      approvedLocations: 0,
+      activeBatches: 0,
+      attendanceRate: 100,
+      verificationRate: 100,
+    };
+
+    const batches = this.getInternshipBatches(norm, caller);
+
+    return {
+      departmentCode: dStat.code,
+      departmentName: dStat.name,
+      status: dStat.status,
+      totalStudents: dStat.totalStudents,
+      activeInternships: dStat.activeInternships,
+      completedInternships: dStat.completedInternships,
+      atRiskInternships: dStat.atRiskInternships,
+      unassignedStudents: dStat.unassignedStudents,
+      activeBatches: dStat.activeBatches,
+      batches,
+      locationsCount: dStat.approvedLocations,
+      attendanceRate: dStat.attendanceRate,
+      verificationRate: dStat.verificationRate,
+    };
+  }
+
+  // ====================================================
   // 5. ADMIN SCOPED DATA ACCESS
   // ====================================================
   public getAllStudentsForAdmin(caller?: AuthUser): StudentRecord[] {
     if (caller !== undefined) {
       AuthorizationPolicy.validateIdentity(caller);
       AuthorizationPolicy.validateHodScope(caller);
+      const isPlatformOp = AuthorizationPolicy.isPlatformAdmin(caller);
+      if (!isPlatformOp && caller.institutionId) {
+        const callerInst = canonicalizeInstitutionId(caller.institutionId || caller.college);
+        return this.students.filter(s => canonicalizeInstitutionId(s.institutionId) === callerInst);
+      }
     }
     return [...this.students];
   }
 
-  public getAllMentorsForAdmin(): MentorRecord[] {
-    return this.mentors.map(m => {
+  public getAllMentorsForAdmin(caller?: AuthUser): MentorRecord[] {
+    if (caller !== undefined) {
+      AuthorizationPolicy.validateIdentity(caller);
+      AuthorizationPolicy.validateHodScope(caller);
+    }
+    const isPlatformOp = AuthorizationPolicy.isPlatformAdmin(caller);
+    const callerInst = canonicalizeInstitutionId(caller?.institutionId || caller?.college);
+    const targetMentors = (caller && !isPlatformOp && caller.institutionId)
+      ? this.mentors.filter(m => canonicalizeInstitutionId(m.institutionId) === callerInst)
+      : this.mentors;
+
+    return targetMentors.map(m => {
       const assigned = this.getStudentsForMentor(m.id);
       const avgProg = assigned.length > 0 
         ? Math.round(assigned.reduce((sum, s) => sum + s.progress, 0) / assigned.length) 
@@ -719,7 +2066,25 @@ class SupabaseIntegratedRepository implements IInternshipRepository {
     return updated;
   }
 
-  public async saveStudent(student: StudentRecord): Promise<void> {
+  public async saveStudent(student: StudentRecord, caller?: AuthUser): Promise<void> {
+    if (caller !== undefined) {
+      AuthorizationPolicy.validateIdentity(caller);
+
+      // Check existing student to prevent unauthorized department reassignment
+      const existing = this.students.find(s => s.studentId.toLowerCase() === student.studentId.toLowerCase());
+      if (existing && existing.departmentCode.toUpperCase() !== student.departmentCode.toUpperCase()) {
+        AuthorizationPolicy.validateDepartmentReassignment(caller, existing.departmentCode, student.departmentCode);
+      }
+
+      if (caller.role === 'student') {
+        AuthorizationPolicy.validateStudentResourceAccess(caller, student.studentId, student);
+      } else if (caller.role === 'mentor') {
+        AuthorizationPolicy.validateMentorScope(caller, student);
+      } else if (caller.role === 'hod') {
+        AuthorizationPolicy.validateHodScope(caller, student.departmentCode);
+      }
+    }
+
     const index = this.students.findIndex(s => s.studentId.toLowerCase() === student.studentId.toLowerCase());
     if (index !== -1) {
       this.students[index] = student;
@@ -756,6 +2121,59 @@ class SupabaseIntegratedRepository implements IInternshipRepository {
     }
   }
 
+  public async saveStudentsBatch(newStudents: StudentRecord[], caller?: AuthUser): Promise<void> {
+    if (caller !== undefined) {
+      AuthorizationPolicy.validateIdentity(caller);
+      if (caller.role === 'student') {
+        throw new ForbiddenException('Access denied. Students cannot perform bulk operations.');
+      }
+      if (caller.role === 'hod') {
+        const callerDept = (caller.departmentCode || caller.dept?.split(' ')[0] || '').trim().toUpperCase();
+        for (const s of newStudents) {
+          if (s.departmentCode.toUpperCase() !== callerDept) {
+            AuthorizationPolicy.validateHodScope(caller, s.departmentCode);
+          }
+        }
+      }
+    }
+
+    for (const student of newStudents) {
+      const index = this.students.findIndex(s => s.studentId.toLowerCase() === student.studentId.toLowerCase());
+      if (index !== -1) {
+        this.students[index] = student;
+      } else {
+        this.students.unshift(student);
+      }
+    }
+    this.persistToStorage();
+    this.notifyListeners();
+
+    const client = getSupabaseClient();
+    if (client && newStudents.length > 0) {
+      try {
+        const rows = newStudents.map(student => ({
+          student_id: student.studentId,
+          student_name: student.studentName,
+          email: student.email || `${student.studentId.toLowerCase()}@college.edu`,
+          department_code: student.departmentCode,
+          academic_year: student.academicYear,
+          company: student.company,
+          role: student.role,
+          mentor_id: student.mentorId,
+          mentor_name: student.mentor,
+          status: student.status,
+          progress: student.progress,
+          hours: student.hours,
+          work: student.work,
+          blocker: student.blocker || null,
+        }));
+        await client.from('students').upsert(rows, { onConflict: 'student_id' });
+      } catch (err) {
+        console.warn('Supabase batch save student error:', err);
+      }
+    }
+  }
+
   // ====================================================
   // 6B. MENTOR STUDENT MANAGEMENT & ONBOARDING (PHASE 4)
   // ====================================================
@@ -771,6 +2189,15 @@ class SupabaseIntegratedRepository implements IInternshipRepository {
       if (caller.role === 'mentor') {
         AuthorizationPolicy.validateMentorScope(caller, studentData.departmentCode || studentData.dept);
       }
+      if (caller.role === 'hod') {
+        AuthorizationPolicy.validateHodScope(caller, studentData.departmentCode || studentData.dept);
+      }
+    }
+
+    const targetDeptCode = (studentData.departmentCode || studentData.dept || 'CSEBS').trim().toUpperCase();
+    const targetDept = this.departments.find(d => d.code.toUpperCase() === targetDeptCode);
+    if (targetDept) {
+      AuthorizationPolicy.validateDepartmentActive(targetDept, caller);
     }
 
     // 1. Validate Register Number
@@ -778,9 +2205,15 @@ class SupabaseIntegratedRepository implements IInternshipRepository {
     if (!regNo) {
       throw new Error('Register number is required for student onboarding.');
     }
-    const duplicateReg = this.students.find(s => s.studentId.trim().toLowerCase() === regNo.toLowerCase());
+    const targetInstId = canonicalizeInstitutionId(studentData.institutionId || caller?.institutionId || caller?.college);
+    const targetInstCode = studentData.institutionCode || caller?.institutionCode || 'SMVEC';
+
+    const duplicateReg = this.students.find(s => 
+      s.studentId.trim().toLowerCase() === regNo.toLowerCase() &&
+      canonicalizeInstitutionId(s.institutionId) === targetInstId
+    );
     if (duplicateReg) {
-      throw new Error(`Duplicate Register Number: A student with register number '${regNo}' already exists (${duplicateReg.studentName}).`);
+      throw new Error(`Duplicate Register Number: A student with register number '${regNo}' already exists in this institution (${duplicateReg.studentName}).`);
     }
 
     // 2. Validate Email
@@ -792,9 +2225,12 @@ class SupabaseIntegratedRepository implements IInternshipRepository {
     if (!emailRegex.test(email)) {
       throw new Error(`Invalid email format: '${email}'.`);
     }
-    const duplicateEmail = this.students.find(s => (s.email || '').trim().toLowerCase() === email);
+    const duplicateEmail = this.students.find(s => 
+      (s.email || '').trim().toLowerCase() === email &&
+      canonicalizeInstitutionId(s.institutionId) === targetInstId
+    );
     if (duplicateEmail) {
-      throw new Error(`Duplicate Email: A student with email address '${email}' already exists (${duplicateEmail.studentName}).`);
+      throw new Error(`Duplicate Email: A student with email address '${email}' already exists in this institution (${duplicateEmail.studentName}).`);
     }
 
     // 3. Validate Name & Department
@@ -813,6 +2249,8 @@ class SupabaseIntegratedRepository implements IInternshipRepository {
       year: studentData.year || studentData.academicYear || '3rd Year',
       departmentCode: dept,
       dept: dept,
+      institutionId: targetInstId,
+      institutionCode: targetInstCode,
       company: studentData.company?.trim() || 'Unassigned',
       mentorId: studentData.mentorId || caller?.mentorId || caller?.id || 'MENTOR_001',
       mentor: studentData.mentor || caller?.name || 'Faculty Mentor',
@@ -839,6 +2277,7 @@ class SupabaseIntegratedRepository implements IInternshipRepository {
       try {
         await client.from('profiles').insert({
           id: newStudent.id,
+          institution_id: newStudent.institutionId,
           email: newStudent.email,
           full_name: newStudent.studentName,
           role: 'student',
@@ -850,6 +2289,7 @@ class SupabaseIntegratedRepository implements IInternshipRepository {
         });
 
         await client.from('students').insert({
+          institution_id: newStudent.institutionId,
           profile_id: newStudent.id,
           register_number: newStudent.studentId,
           academic_year: newStudent.academicYear,
@@ -885,15 +2325,18 @@ class SupabaseIntegratedRepository implements IInternshipRepository {
         AuthorizationPolicy.validateMentorScope(caller, row.departmentCode || row.dept);
       }
 
-      // Check duplicate regNo
+      const targetInstId = canonicalizeInstitutionId(row.institutionId || caller?.institutionId || caller?.college);
+      const targetInstCode = row.institutionCode || caller?.institutionCode || 'SMVEC';
+
+      // Check duplicate regNo within target institution
       const regLower = row.studentId.trim().toLowerCase();
-      if (this.students.some(s => s.studentId.trim().toLowerCase() === regLower)) {
+      if (this.students.some(s => s.studentId.trim().toLowerCase() === regLower && canonicalizeInstitutionId(s.institutionId) === targetInstId)) {
         continue; // duplicate guard
       }
 
-      // Check duplicate email
+      // Check duplicate email within target institution
       const emailLower = (row.email || '').trim().toLowerCase();
-      if (emailLower && this.students.some(s => (s.email || '').trim().toLowerCase() === emailLower)) {
+      if (emailLower && this.students.some(s => (s.email || '').trim().toLowerCase() === emailLower && canonicalizeInstitutionId(s.institutionId) === targetInstId)) {
         continue; // duplicate guard
       }
 
@@ -908,6 +2351,8 @@ class SupabaseIntegratedRepository implements IInternshipRepository {
         year: row.year || row.academicYear || '3rd Year',
         departmentCode: dept,
         dept: dept,
+        institutionId: targetInstId,
+        institutionCode: targetInstCode,
         company: row.company?.trim() || 'Unassigned',
         mentorId: row.mentorId || caller?.mentorId || caller?.id || 'MENTOR_001',
         mentor: row.mentor || caller?.name || 'Faculty Mentor',
@@ -970,6 +2415,9 @@ class SupabaseIntegratedRepository implements IInternshipRepository {
       if (caller.role === 'mentor') {
         AuthorizationPolicy.validateMentorScope(caller, student);
       }
+      if (caller.role === 'hod') {
+        AuthorizationPolicy.validateHodScope(caller, student.departmentCode);
+      }
     }
 
     student.accountStatus = accountStatus;
@@ -1020,6 +2468,8 @@ class SupabaseIntegratedRepository implements IInternshipRepository {
       mentorId?: string;
       mentorName?: string;
       notes?: string;
+      batchId?: string;
+      batchName?: string;
     },
     caller: AuthUser
   ): Promise<InternshipAssignmentRecord> {
@@ -1035,8 +2485,40 @@ class SupabaseIntegratedRepository implements IInternshipRepository {
       throw new Error(`Student with ID '${params.studentId}' was not found.`);
     }
 
+    AuthorizationPolicy.validateInstitutionScope(caller, student.institutionId);
+
     if (caller.role === 'mentor') {
       AuthorizationPolicy.validateMentorScope(caller, student);
+    }
+    if (caller.role === 'hod') {
+      AuthorizationPolicy.validateHodScope(caller, student.departmentCode);
+    }
+
+    const studentDept = this.departments.find(d => d.code.toUpperCase() === student.departmentCode.toUpperCase());
+    if (studentDept) {
+      AuthorizationPolicy.validateDepartmentActive(studentDept, caller);
+    }
+
+    if (params.mentorId) {
+      const targetMentor = this.mentors.find(m => m.id.toLowerCase() === params.mentorId?.toLowerCase());
+      if (targetMentor) {
+        const studentInst = canonicalizeInstitutionId(student.institutionId);
+        const mentorInst = canonicalizeInstitutionId(targetMentor.institutionId);
+        if (studentInst !== mentorInst) {
+          throw new ForbiddenException(
+            `Tenant Isolation Violation: Mentor '${targetMentor.name}' belongs to institution '${targetMentor.institutionId}', cannot supervise student belonging to '${student.institutionId}'.`
+          );
+        }
+      }
+      if (targetMentor && caller.role !== 'admin' && caller.role !== 'super_admin' && caller.role !== 'platform_super_admin') {
+        const mentorDept = targetMentor.departmentCode.toUpperCase();
+        const studDept = student.departmentCode.toUpperCase();
+        if (mentorDept !== studDept) {
+          throw new ForbiddenException(
+            `Cross-department assignment forbidden. Mentor '${targetMentor.name}' (${mentorDept}) cannot supervise student '${student.studentName}' (${studDept}).`
+          );
+        }
+      }
     }
 
     // 3. Validation: Only Approved Locations Can Be Assigned
@@ -1046,6 +2528,15 @@ class SupabaseIntegratedRepository implements IInternshipRepository {
     }
     if (location.status !== 'active' || !location.isActive) {
       throw new Error(`Validation Error: Location '${location.locationName}' is not approved (status: ${location.status}, isActive: ${location.isActive}). Only approved locations can be assigned.`);
+    }
+    if (location.institutionId) {
+      const studentInst = canonicalizeInstitutionId(student.institutionId);
+      const locInst = canonicalizeInstitutionId(location.institutionId);
+      if (studentInst !== locInst) {
+        throw new ForbiddenException(
+          `Tenant Isolation Violation: Location '${location.locationName}' belongs to institution '${location.institutionId}', cannot be assigned to student belonging to '${student.institutionId}'.`
+        );
+      }
     }
 
     // 4. Validation: Invalid Date Ranges Must Be Rejected
@@ -1067,17 +2558,45 @@ class SupabaseIntegratedRepository implements IInternshipRepository {
       throw new Error(`Validation Error: Conflicting active assignment. Student '${student.studentName}' (${student.studentId}) already has an active assignment at '${existingActive.companyName}'. Conflicting active assignments are prohibited.`);
     }
 
+    // 5B. Batch Assignment Handling & Validation (Phase 17C)
+    let assignedBatch: InternshipBatchRecord | null = null;
+    if (params.batchId) {
+      assignedBatch = this.batches.find(b => b.id === params.batchId) || null;
+      if (!assignedBatch) {
+        throw new Error(`Validation Error: Internship batch '${params.batchId}' was not found.`);
+      }
+      const studentInst = canonicalizeInstitutionId(student.institutionId);
+      const batchInst = canonicalizeInstitutionId(assignedBatch.institutionId);
+      if (studentInst !== batchInst) {
+        throw new ForbiddenException(
+          `Tenant Isolation Violation: Batch '${assignedBatch.batchName}' belongs to institution '${assignedBatch.institutionId}', cannot be assigned to student belonging to '${student.institutionId}'.`
+        );
+      }
+      if (assignedBatch.departmentCode.toUpperCase() !== student.departmentCode.toUpperCase()) {
+        throw new ForbiddenException(
+          `Department mismatch: Cannot assign student '${student.studentName}' (${student.departmentCode}) to batch '${assignedBatch.batchName}' (${assignedBatch.departmentCode}).`
+        );
+      }
+      if (assignedBatch.status !== 'active') {
+        throw new Error(`Validation Error: Cannot assign student to inactive batch '${assignedBatch.batchName}'.`);
+      }
+    }
+
     // 6. Build Assignment Record
     const assignmentId = `asgn-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
     const assignedMentorId = params.mentorId || (caller.role === 'mentor' ? (caller.mentorId || caller.id) : student.mentorId);
     const assignedMentorName = params.mentorName || (caller.role === 'mentor' ? caller.name : student.mentor);
     const roleTitle = (params.roleTitle || 'Intern').trim();
+    const assignmentInstId = student.institutionId || caller.institutionId || 'inst-smvec-001';
+    const assignmentInstCode = student.institutionCode || caller.institutionCode || 'SMVEC';
 
     const record: InternshipAssignmentRecord = {
       id: assignmentId,
       studentId: student.studentId,
       studentName: student.studentName,
       departmentCode: student.departmentCode,
+      institutionId: assignmentInstId,
+      institutionCode: assignmentInstCode,
       mentorId: assignedMentorId,
       mentorName: assignedMentorName,
       mentorEmail: caller.email || student.mentorEmail,
@@ -1091,6 +2610,8 @@ class SupabaseIntegratedRepository implements IInternshipRepository {
       roleTitle: roleTitle,
       startDate: params.startDate,
       endDate: params.endDate,
+      batchId: assignedBatch ? assignedBatch.id : params.batchId,
+      batchName: assignedBatch ? assignedBatch.batchName : params.batchName,
       monitoringSchedule: params.monitoringSchedule || {
         startTime: location.monitoringStartTime || '09:00:00',
         endTime: location.monitoringEndTime || '17:00:00',
@@ -1110,6 +2631,11 @@ class SupabaseIntegratedRepository implements IInternshipRepository {
     student.mentorId = assignedMentorId;
     student.mentor = assignedMentorName;
     student.status = 'inProgress';
+    if (assignedBatch) {
+      student.batchId = assignedBatch.id;
+      student.batchName = assignedBatch.batchName;
+      assignedBatch.enrolledStudentCount = this.students.filter(s => s.batchId === assignedBatch.id).length;
+    }
 
     // 8. Store and Persist
     this.assignments.unshift(record);
@@ -1122,6 +2648,7 @@ class SupabaseIntegratedRepository implements IInternshipRepository {
       try {
         await client.from('internship_assignments').insert({
           id: record.id,
+          institution_id: record.institutionId,
           student_id: student.id,
           mentor_id: assignedMentorId,
           location_id: location.id,
@@ -1130,6 +2657,8 @@ class SupabaseIntegratedRepository implements IInternshipRepository {
           end_date: params.endDate,
           monitoring_start_time: record.monitoringSchedule.startTime,
           monitoring_end_time: record.monitoringSchedule.endTime,
+          batch_id: record.batchId || null,
+          batch_name: record.batchName || null,
           status: 'active',
           assigned_at: record.assignedTimestamp,
           assigned_by: record.assignedBy,
@@ -1175,14 +2704,21 @@ class SupabaseIntegratedRepository implements IInternshipRepository {
       if (caller.role === 'student') {
         throw new ForbiddenException('Security Violation: Students cannot inspect institution-wide active assignments.');
       }
+      const isPlatformOp = AuthorizationPolicy.isPlatformAdmin(caller);
+      let baseList = this.assignments;
+      if (!isPlatformOp && caller.institutionId) {
+        const callerInst = canonicalizeInstitutionId(caller.institutionId || caller.college);
+        baseList = baseList.filter(a => canonicalizeInstitutionId(a.institutionId) === callerInst);
+      }
       if (caller.role === 'mentor') {
         const mentorDept = (caller.departmentCode || caller.dept?.split(' ')[0] || '').toUpperCase();
         const mentorId = (caller.mentorId || caller.id).toLowerCase();
-        return this.assignments.filter(a => 
+        return baseList.filter(a => 
           a.assignmentStatus === 'active' && 
           (a.mentorId.toLowerCase() === mentorId || a.departmentCode.toUpperCase() === mentorDept)
         );
       }
+      return baseList.filter(a => a.assignmentStatus === 'active');
     }
     return this.assignments.filter(a => a.assignmentStatus === 'active');
   }
@@ -1206,6 +2742,12 @@ class SupabaseIntegratedRepository implements IInternshipRepository {
       const student = this.getStudentById(assignment.studentId);
       if (student) {
         AuthorizationPolicy.validateMentorScope(caller, student);
+      }
+    }
+    if (caller.role === 'hod') {
+      const student = this.getStudentById(assignment.studentId);
+      if (student) {
+        AuthorizationPolicy.validateHodScope(caller, student.departmentCode);
       }
     }
 
@@ -1264,11 +2806,15 @@ class SupabaseIntegratedRepository implements IInternshipRepository {
 
     if (caller !== undefined) {
       AuthorizationPolicy.validateIdentity(caller);
+      AuthorizationPolicy.validateInstitutionScope(caller, student.institutionId);
       if (caller.role === 'student') {
         throw new ForbiddenException('Access denied. Students cannot assign internships.');
       }
       if (caller.role === 'mentor') {
         AuthorizationPolicy.validateMentorScope(caller, student);
+      }
+      if (caller.role === 'hod') {
+        AuthorizationPolicy.validateHodScope(caller, student.departmentCode);
       }
     }
 
@@ -1277,12 +2823,19 @@ class SupabaseIntegratedRepository implements IInternshipRepository {
       throw new Error(`Invalid assignment date range: End date (${assignment.endDate}) cannot precede start date (${assignment.startDate}).`);
     }
 
-    // If location provided, validate approval
+    // If location provided, validate approval and tenant
     let resolvedLoc: any = null;
     if (assignment.locationId) {
       resolvedLoc = locationRepository.getLocationById(assignment.locationId);
       if (resolvedLoc && (resolvedLoc.status !== 'active' || !resolvedLoc.isActive)) {
         throw new Error(`Validation Error: Location '${resolvedLoc.locationName}' is not approved. Only approved locations can be assigned.`);
+      }
+      if (resolvedLoc && resolvedLoc.institutionId) {
+        const studentInst = canonicalizeInstitutionId(student.institutionId);
+        const locInst = canonicalizeInstitutionId(resolvedLoc.institutionId);
+        if (locInst !== studentInst) {
+          throw new ForbiddenException(`Tenant Isolation Violation: Location '${resolvedLoc.locationName}' belongs to institution '${resolvedLoc.institutionId}', cannot be assigned to student of '${student.institutionId}'.`);
+        }
       }
     }
 
@@ -1396,11 +2949,31 @@ class SupabaseIntegratedRepository implements IInternshipRepository {
       // Match mentor's mentees
       const student = this.students.find(s => s.studentId.toLowerCase() === sess.studentId.toLowerCase());
       if (student && student.mentorId.toLowerCase() === normMentorId) return true;
-      if (caller && (caller.role === 'hod' || caller.role === 'admin')) {
-        if (!normDept || normDept === 'ALL' || sessDept === normDept) return true;
+      if (caller && (caller.role === 'hod' || caller.role === 'admin' || caller.role === 'super_admin')) {
+        if (caller.role === 'hod') {
+          const callerDept = (caller.departmentCode || caller.dept?.split(' ')[0] || '').trim().toUpperCase();
+          if (callerDept && sessDept === callerDept) return true;
+        } else {
+          if (!normDept || normDept === 'ALL' || sessDept === normDept) return true;
+        }
       }
       return false;
     });
+  }
+
+  public getAllAttendanceSessions(caller?: AuthUser): AttendanceSessionRecord[] {
+    if (caller !== undefined) {
+      AuthorizationPolicy.validateIdentity(caller);
+      if (caller.role !== 'admin' && caller.role !== 'super_admin') {
+        throw new ForbiddenException('Access denied. Only Super Admin can access all institutional attendance sessions.');
+      }
+      const isPlatformOp = AuthorizationPolicy.isPlatformAdmin(caller);
+      if (!isPlatformOp && caller.institutionId) {
+        const callerInst = canonicalizeInstitutionId(caller.institutionId || caller.college);
+        return this.attendanceSessions.filter(a => canonicalizeInstitutionId(a.institutionId) === callerInst);
+      }
+    }
+    return [...this.attendanceSessions];
   }
 
   public async verifyAttendanceSession(
@@ -1425,6 +2998,12 @@ class SupabaseIntegratedRepository implements IInternshipRepository {
       const student = this.students.find(s => s.studentId.toLowerCase() === session.studentId.toLowerCase());
       if (student) {
         AuthorizationPolicy.validateMentorScope(caller, student);
+      }
+    }
+    if (caller && caller.role === 'hod') {
+      const student = this.students.find(s => s.studentId.toLowerCase() === session.studentId.toLowerCase());
+      if (student) {
+        AuthorizationPolicy.validateHodScope(caller, student.departmentCode);
       }
     }
 
@@ -1462,10 +3041,32 @@ class SupabaseIntegratedRepository implements IInternshipRepository {
     newMentorName: string, 
     caller?: AuthUser
   ): Promise<void> {
+    const student = this.getStudentById(studentId);
+    if (!student) {
+      throw new Error(`Student with ID '${studentId}' was not found.`);
+    }
+
     if (caller !== undefined) {
       AuthorizationPolicy.validateIdentity(caller);
-      AuthorizationPolicy.validateHodScope(caller);
+      AuthorizationPolicy.validateHodScope(caller, student.departmentCode);
+      const studentDept = this.departments.find(d => d.code.toUpperCase() === student.departmentCode.toUpperCase());
+      if (studentDept) {
+        AuthorizationPolicy.validateDepartmentActive(studentDept, caller);
+      }
     }
+
+    // Cross-department mentor check
+    const targetMentor = this.mentors.find(m => m.id.toLowerCase() === newMentorId.toLowerCase());
+    if (targetMentor && caller && caller.role !== 'admin' && caller.role !== 'super_admin') {
+      const mentorDept = targetMentor.departmentCode.toUpperCase();
+      const studDept = student.departmentCode.toUpperCase();
+      if (mentorDept !== studDept) {
+        throw new ForbiddenException(
+          `Cross-department mentor assignment forbidden. Mentor '${targetMentor.name}' (${mentorDept}) cannot supervise student in '${studDept}'.`
+        );
+      }
+    }
+
     const index = this.students.findIndex(s => s.studentId === studentId || s.id === studentId);
     if (index !== -1) {
       this.students[index] = {
@@ -1503,18 +3104,24 @@ class SupabaseIntegratedRepository implements IInternshipRepository {
     this.students = [];
     this.mentors = [];
     this.hods = [];
+    this.departments = [];
     this.assignments = [];
     this.attendanceSessions = [];
+    this.batches = [];
+    this.transferHistory = [];
     this.persistToStorage();
     this.notifyListeners();
   }
 
   public resetToDefaults(): void {
-    this.students = this.normalizeStudentRecords([...DEFAULT_STUDENTS]);
-    this.mentors = [...DEFAULT_MENTORS];
-    this.hods = [...DEFAULT_HODS];
-    this.attendanceSessions = [...DEFAULT_ATTENDANCE_SESSIONS];
-    this.assignments = [...DEFAULT_ASSIGNMENTS];
+    this.students = this.normalizeStudentRecords(DEFAULT_STUDENTS.map(s => ({ ...s })));
+    this.mentors = DEFAULT_MENTORS.map(m => ({ ...m }));
+    this.hods = DEFAULT_HODS.map(h => ({ ...h }));
+    this.departments = DEFAULT_DEPARTMENTS.map(d => ({ ...d }));
+    this.attendanceSessions = DEFAULT_ATTENDANCE_SESSIONS.map(s => ({ ...s }));
+    this.assignments = DEFAULT_ASSIGNMENTS.map(a => ({ ...a }));
+    this.batches = DEFAULT_INTERNSHIP_BATCHES.map(b => ({ ...b }));
+    this.transferHistory = [];
     this.persistToStorage();
     this.notifyListeners();
   }

@@ -1,0 +1,122 @@
+name: Flutter CI/CD Validation
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+concurrency:
+  group: flutter-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Native Flutter Static Analysis & Automated Testing
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: InternPulse-main
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17 Development Kit
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+
+      - name: Set up Flutter SDK (Stable)
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+          cache-key: 'flutter-:os:-:channel:-:version:-:arch:-:hash:'
+          cache-path: '${{ runner.tool_cache }}/flutter/:channel:-:version:-:arch:'
+
+      - name: Verify Flutter & Dart Environment
+        run: |
+          echo "=== FLUTTER ENVIRONMENT INFO ==="
+          flutter --version
+          dart --version
+          flutter doctor -v
+
+      - name: Cache Flutter Pub Dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.pub-cache
+            InternPulse-main/.dart_tool
+          key: ${{ runner.os }}-pub-${{ hashFiles('InternPulse-main/pubspec.yaml', 'InternPulse-main/pubspec.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pub-
+
+      - name: Resolve Dependencies (flutter pub get)
+        run: |
+          echo "Resolving dependencies for InternPulse mobile application..."
+          flutter pub get
+
+      - name: Run Static Analysis (flutter analyze)
+        run: |
+          echo "Running Flutter static analyzer..."
+          flutter analyze --fatal-infos --fatal-warnings
+
+      - name: Run Native Unit & Integration Tests (flutter test)
+        run: |
+          echo "Executing native Flutter unit, model, and workflow test suites..."
+          flutter test --coverage --reporter expanded
+
+      - name: Upload Test Coverage & Failure Logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: flutter-test-coverage-and-logs
+          path: |
+            InternPulse-main/coverage/
+            InternPulse-main/.dart_tool/
+          retention-days: 14
+
+  build-android-debug:
+    name: Android Debug APK Compilation
+    runs-on: ubuntu-latest
+    needs: validate
+    defaults:
+      run:
+        working-directory: InternPulse-main
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17 Development Kit
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+
+      - name: Set up Flutter SDK (Stable)
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Resolve Dependencies
+        run: flutter pub get
+
+      - name: Build Android Debug APK
+        run: |
+          echo "Compiling Android Debug APK..."
+          flutter build apk --debug
+
+      - name: Upload Android Debug APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: internpulse-android-debug-apk
+          path: InternPulse-main/build/app/outputs/flutter-apk/app-debug.apk
+          retention-days: 14
+

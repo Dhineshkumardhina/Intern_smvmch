@@ -12,13 +12,15 @@ import {
   ExternalLink,
   MessageSquare,
   ShieldCheck,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Download
 } from 'lucide-react';
 import { StudentRecord } from '../data/initialData';
 import { AuthUser } from '../core/auth/authUser';
 import { MentorStudentManagementView } from './mentor/MentorStudentManagementView';
 import { MentorAttendanceOverview } from './mentor/MentorAttendanceOverview';
 import { internshipRepository } from '../core/repository/internshipRepository';
+import { InstitutionalReportExportModal } from './analytics/InstitutionalReportExportModal';
 
 interface MentorDashboardProps {
   currentUser: AuthUser;
@@ -54,6 +56,7 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
   const [reviewModalStudent, setReviewModalStudent] = useState<StudentRecord | null>(null);
   const [reviewRemarks, setReviewRemarks] = useState('');
   const [reviewSuccess, setReviewSuccess] = useState(false);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
 
   const mentorDept = currentUser.departmentCode || currentUser.dept?.split(' ')[0] || 'CSEBS';
 
@@ -146,9 +149,18 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
           </p>
         </div>
 
-        <div className="flex items-center space-x-2 bg-[#EFEDF6] px-3.5 py-2 rounded-xl text-xs text-[#57657A]">
-          <ShieldCheck className="w-4 h-4 text-emerald-600" />
-          <span>Strict Scoped View: <strong>Authorized for {currentUser.name} only</strong></span>
+        <div className="flex items-center space-x-3">
+          <button
+            onClick={() => setIsExportModalOpen(true)}
+            className="px-3.5 py-2 rounded-xl bg-[#24389C] text-white hover:bg-[#1E2E80] text-xs font-bold flex items-center space-x-1.5 shadow-xs transition-all"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span>Export Cohort Report</span>
+          </button>
+          <div className="flex items-center space-x-2 bg-[#EFEDF6] px-3.5 py-2 rounded-xl text-xs text-[#57657A]">
+            <ShieldCheck className="w-4 h-4 text-emerald-600" />
+            <span>Strict Scoped View: <strong>Authorized for {currentUser.name} only</strong></span>
+          </div>
         </div>
       </div>
 
@@ -517,6 +529,15 @@ export const MentorDashboard: React.FC<MentorDashboardProps> = ({
             )}
           </div>
         </div>
+      )}
+
+      {isExportModalOpen && (
+        <InstitutionalReportExportModal
+          isOpen={isExportModalOpen}
+          onClose={() => setIsExportModalOpen(false)}
+          currentUser={currentUser}
+          defaultReportType="attendance_master"
+        />
       )}
     </div>
   );

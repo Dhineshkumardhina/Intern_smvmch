@@ -13,7 +13,7 @@ import {
   Power, 
   ExternalLink 
 } from 'lucide-react';
-import { LocationRecord } from '../../core/repository/locationRepository';
+import { LocationRecord, locationRepository } from '../../core/repository/locationRepository';
 import { StudentRecord } from '../../data/initialData';
 import { InteractiveGeofenceMap } from './InteractiveGeofenceMap';
 
@@ -221,6 +221,50 @@ export const LocationDetailsModal: React.FC<LocationDetailsModalProps> = ({
                         {s.status}
                       </span>
                     </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Section 7: Location Change & Governance Audit History (Phase 17C) */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between border-b border-[#E3E1EA] pb-2">
+              <h4 className="font-bold text-sm text-[#1A1B22] flex items-center space-x-1.5">
+                <Clock className="w-4 h-4 text-[#24389C]" />
+                <span>Governance & Modification Audit Trail</span>
+              </h4>
+              <span className="px-2 py-0.5 font-bold text-[#24389C] bg-[#EFEDF6] rounded-md">
+                {locationRepository.getLocationChangeHistory(location.id).length} Events Recorded
+              </span>
+            </div>
+
+            {locationRepository.getLocationChangeHistory(location.id).length === 0 ? (
+              <div className="p-4 text-center text-[#57657A] bg-[#FBF8FF] rounded-xl border border-dashed border-[#E3E1EA]">
+                No historical revisions recorded for this facility boundary.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {locationRepository.getLocationChangeHistory(location.id).map((h) => (
+                  <div key={h.id} className="p-3 bg-[#FBF8FF] rounded-xl border border-[#E3E1EA] flex items-start justify-between">
+                    <div className="space-y-1">
+                      <div className="flex items-center space-x-2">
+                        <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border ${
+                          h.changeType === 'created'
+                            ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                            : h.changeType === 'status_changed'
+                            ? 'bg-indigo-50 text-indigo-800 border-indigo-200'
+                            : 'bg-slate-100 text-slate-700 border-slate-300'
+                        }`}>
+                          {h.changeType.replace('_', ' ')}
+                        </span>
+                        <span className="font-semibold text-xs text-[#1A1B22]">{h.changedByName}</span>
+                      </div>
+                      <p className="text-[11px] text-[#57657A]">{h.remarks || 'Standard governance action.'}</p>
+                    </div>
+                    <span className="text-[10px] text-[#757684] font-mono whitespace-nowrap">
+                      {new Date(h.changedAt).toLocaleString()}
+                    </span>
                   </div>
                 ))}
               </div>

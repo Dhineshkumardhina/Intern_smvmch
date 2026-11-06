@@ -3,6 +3,16 @@ import { getSupabaseClient, DbMentor, DbHod, DbStudent, DbProfile } from '../../
 
 export const COLLEGE_NAME = 'Sri Manakula Vinayagar Engineering College';
 
+/**
+ * Security Guard (SEC-16): Prevents demo accounts from being loaded or exposed in production environments.
+ */
+export function isDemoAccountAccessPermitted(): boolean {
+  if (typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'production') {
+    return false;
+  }
+  return true;
+}
+
 export interface SampleLoginAccount {
   id: string;
   name: string;
@@ -33,7 +43,7 @@ export async function fetchSupabaseLiveSampleLogins(): Promise<{
     students: [],
   };
 
-  if (!client) return result;
+  if (!client || !isDemoAccountAccessPermitted()) return result;
 
   try {
     // 1. Primary: query authoritative `profiles` table
