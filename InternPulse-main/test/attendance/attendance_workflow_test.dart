@@ -82,7 +82,8 @@ void main() {
         'is_verified': true,
       }, 'att-half');
 
-      expect(halfDay.isPresent, false);
+      expect(halfDay.isPresent, true);
+      expect(halfDay.isHalfDay, true);
       expect(halfDay.totalHours, 4.0);
       expect(halfDay.isVerified, true);
     });
