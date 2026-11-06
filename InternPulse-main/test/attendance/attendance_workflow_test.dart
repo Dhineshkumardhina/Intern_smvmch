@@ -25,7 +25,7 @@ void main() {
       expect(session.status, 'present');
       expect(session.isPresent, true);
       expect(session.isVerified, true);
-      expect(session.totalHours, isNull);
+      expect(session.totalHours, 0.0);
     });
 
     test('Check-out session completion computes hours worked', () {
@@ -51,7 +51,7 @@ void main() {
 
       expect(session.checkOutAt, isNotNull);
       expect(session.totalHours, 8.5);
-      expect(session.totalHours!, greaterThanOrEqualTo(8.0));
+      expect(session.totalHours, greaterThanOrEqualTo(8.0));
       expect(session.status, 'present');
 
       final map = session.toMap();

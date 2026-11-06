@@ -128,6 +128,7 @@ jobs:
           if [ ! -f "android/gradlew" ]; then
             flutter create . --platforms=android
           fi
+          chmod +x android/gradlew || true
 
       - name: Resolve Dependencies
         run: flutter pub get
