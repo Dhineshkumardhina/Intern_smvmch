@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   Zap, 
   LogOut, 
@@ -76,17 +76,22 @@ export default function App() {
   });
 
   // Subscribe to Supabase Auth State changes & Session Expiration
+  const currentUserRef = useRef<AuthUser | null>(currentUser);
+  useEffect(() => {
+    currentUserRef.current = currentUser;
+  }, [currentUser]);
+
   useEffect(() => {
     const unsubscribeAuth = authService.initAuthListener((user) => {
-      // If user was previously authenticated and suddenly becomes null, session expired
-      if (currentUser && !user) {
+      // If user was previously authenticated and suddenly becomes null without explicit logout
+      if (currentUserRef.current && !user) {
         setSessionExpiredNotice('Your authentication session has expired. Please log in again.');
         setCurrentRoute('/login');
       }
       setCurrentUser(user);
     });
     return () => unsubscribeAuth();
-  }, [currentUser]);
+  }, []);
 
   // Initial Session Restoration on App Mount
   useEffect(() => {
@@ -217,6 +222,7 @@ export default function App() {
       const resp = await authService.login(emailOrId, pass);
       setAuthLoading(false);
       if (resp.success && resp.user) {
+        currentUserRef.current = resp.user;
         setCurrentUser(resp.user);
 
         // Check if a valid redirect route was saved and caller is authorized for it
@@ -249,6 +255,7 @@ export default function App() {
       const resp = await authService.registerStudent(params);
       setAuthLoading(false);
       if (resp.success && resp.user) {
+        currentUserRef.current = resp.user;
         setCurrentUser(resp.user);
         setCurrentRoute('/setup-internship');
       } else {
@@ -268,6 +275,7 @@ export default function App() {
       const resp = await authService.completeInternshipSetup(currentUser.id, details);
       setAuthLoading(false);
       if (resp.success && resp.user) {
+        currentUserRef.current = resp.user;
         setCurrentUser(resp.user);
 
         const studentDept = resp.user.departmentCode || resp.user.dept || 'CSEBS';
@@ -316,6 +324,8 @@ export default function App() {
 
   // Handle Secure Logout
   const handleLogout = async () => {
+    currentUserRef.current = null;
+    setSessionExpiredNotice(null);
     await authService.logout();
     setCurrentUser(null);
     setRedirectAfterLogin(null);

@@ -135,7 +135,32 @@ class ProductionSupabaseAuthService implements IAuthService {
     }
 
     const { data: authListener } = client.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_OUT' || !session?.user) {
+      if (event === 'SIGNED_OUT') {
+        this.currentUser = null;
+        if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+          localStorage.removeItem('internpulse_dev_session');
+        }
+        this.notifyAuthChange();
+      } else if (!session?.user) {
+        // In offline / dev mode, preserve local active session and do not invalidate on remote null event
+        if (isDemoAccountAccessPermitted() && this.currentUser) {
+          return;
+        }
+        if (isDemoAccountAccessPermitted() && typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+          const cached = localStorage.getItem('internpulse_dev_session');
+          if (cached) {
+            try {
+              const u = JSON.parse(cached);
+              if (u && u.isActive !== false) {
+                this.currentUser = u;
+                this.notifyAuthChange();
+                return;
+              }
+            } catch {
+              // ignore
+            }
+          }
+        }
         this.currentUser = null;
         this.notifyAuthChange();
       } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
