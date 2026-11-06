@@ -86,8 +86,9 @@ void main() {
 
     test('InternshipStatus enum parses status string variants correctly', () {
       expect(InternshipStatus.fromString('onTrack'), InternshipStatus.onTrack);
-      expect(InternshipStatus.fromString('needsAttention'), InternshipStatus.needsAttention);
-      expect(InternshipStatus.fromString('critical'), InternshipStatus.critical);
+      expect(InternshipStatus.fromString('inProgress'), InternshipStatus.inProgress);
+      expect(InternshipStatus.fromString('delayed'), InternshipStatus.delayed);
+      expect(InternshipStatus.fromString('blocked'), InternshipStatus.blocked);
       expect(InternshipStatus.fromString('completed'), InternshipStatus.completed);
       // Fallback for null or unmapped
       expect(InternshipStatus.fromString(null), InternshipStatus.onTrack);
