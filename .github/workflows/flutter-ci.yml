@@ -75,7 +75,15 @@ jobs:
       - name: Run Native Unit & Integration Tests (flutter test)
         run: |
           echo "Executing native Flutter unit, model, and workflow test suites..."
-          flutter test --coverage --reporter expanded
+          flutter test --coverage --reporter expanded 2>&1 | tee test_output.txt || true
+          echo "### Flutter Test Output" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          cat test_output.txt >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          if grep -q "Some tests failed" test_output.txt; then
+            echo "::error::Flutter tests failed!"
+            exit 1
+          fi
 
       - name: Upload Test Coverage & Failure Logs
         if: always()
